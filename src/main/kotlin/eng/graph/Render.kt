@@ -11,6 +11,7 @@ class Render(window: Window, scene: Scene) {
     val graphQueue: Queue.GraphicsQueue
     val physicalDevice: PhysicalDevice
     val surface: Surface
+    val swapChain: SwapChain
 
     init {
         val engProps = EngineProperties.instance
@@ -19,8 +20,11 @@ class Render(window: Window, scene: Scene) {
         device = Device(physicalDevice)
         surface = Surface(physicalDevice, window.windowHandle)
         graphQueue = Queue.GraphicsQueue(device, 0)
+        swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
     }
+
     fun cleanup() {
+        swapChain.cleanup()
         surface.cleanup()
         device.cleanup()
         physicalDevice.cleanup()
