@@ -68,25 +68,6 @@ class ForwardRenderActivity(
         fences.forEach(Fence::cleanup)
     }
 
-    private fun recordCommandBuffer(commandBuffer: CommandBuffer, frameBuffer: FrameBuffer, width: Int, height: Int) {
-        MemoryStack.stackPush().use { stack ->
-            val clearValues = VkClearValue.calloc(1, stack)
-            clearValues.apply(0) { v ->
-                v.color().float32(0, 0.5f).float32(1, 0.7f).float32(2, 0.9f).float32(3, 1f)
-            }
-            val renderPassBeginInfo = VkRenderPassBeginInfo.calloc(stack)
-                .`sType$Default`()
-                .renderPass(renderPass.vkRenderPass)
-                .pClearValues(clearValues)
-                .renderArea { a -> a.extent().set(width, height) }
-                .framebuffer(frameBuffer.vkFrameBuffer)
-            commandBuffer.beginRecording()
-            vkCmdBeginRenderPass(commandBuffer.vkCommandBuffer, renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE)
-            vkCmdEndRenderPass(commandBuffer.vkCommandBuffer)
-            commandBuffer.endRecording()
-        }
-    }
-
     fun recordCommandBuffer(vulkanModelList: List<VulkanModel>) {
         MemoryStack.stackPush().use { stack ->
             val swapChainExtent = swapChain.swapChainExtent
@@ -154,8 +135,6 @@ class ForwardRenderActivity(
             val idx = swapChain.currentFrame
             val commandBuffer = commandBuffers[idx]
             val currentFence = fences[idx]
-            currentFence.fenceWait()
-            currentFence.reset()
             val syncSemaphores = swapChain.syncSemaphoresList[idx]
             queue.submit(
                 stack.pointers(commandBuffer.vkCommandBuffer),
