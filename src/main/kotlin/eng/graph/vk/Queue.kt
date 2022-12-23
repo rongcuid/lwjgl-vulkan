@@ -28,8 +28,8 @@ open class Queue(device: Device, queueFamilyIndex: Int, queueIndex: Int) {
         vkQueueWaitIdle(vkQueue)
     }
 
-    fun submit(commandBuffers: PointerBuffer, waitSemaphores: LongBuffer?, dstStageMasks: IntBuffer,
-               signalSemaphores: LongBuffer, fence: Fence?) {
+    fun submit(commandBuffers: PointerBuffer, waitSemaphores: LongBuffer?, dstStageMasks: IntBuffer?,
+               signalSemaphores: LongBuffer?, fence: Fence?) {
         MemoryStack.stackPush().use { stack ->
             val submitInfo = VkSubmitInfo.calloc(stack)
                 .`sType$Default`()

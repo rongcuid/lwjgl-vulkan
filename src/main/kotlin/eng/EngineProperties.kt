@@ -11,6 +11,7 @@ class EngineProperties {
     var physDeviceName: String? = null
     var vSync: Boolean = true
     var requestedImages: Int = DEFAULT_REQUESTED_IMAGES
+    var shaderRecompilation: Boolean = false
 
     init {
         val props = Properties()
@@ -22,6 +23,7 @@ class EngineProperties {
             physDeviceName = props.getProperty("physDeviceName")
             requestedImages = props.getOrDefault("requestedImages", DEFAULT_REQUESTED_IMAGES).toString().toInt()
             vSync = props.getOrDefault("vsync", true).toString().toBoolean()
+            shaderRecompilation = props.getOrDefault("shaderRecompilation", false).toString().toBoolean()
         } catch (e: IOException) {
             Logger.error("Could not read [{}] properties file", FILENAME, e)
         }
