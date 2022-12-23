@@ -13,7 +13,7 @@ class Render(window: Window, scene: Scene) {
     val physicalDevice: PhysicalDevice
     val pipelineCache: PipelineCache
     val surface: Surface
-    val swapChain: SwapChain
+    var swapChain: SwapChain
     val commandPool: CommandPool
     val presentQueue: Queue.PresentQueue
     val fwdRenderActivity: ForwardRenderActivity
@@ -29,7 +29,7 @@ class Render(window: Window, scene: Scene) {
         swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
         commandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         pipelineCache = PipelineCache(device)
-        fwdRenderActivity = ForwardRenderActivity(swapChain, commandPool, pipelineCache)
+        fwdRenderActivity = ForwardRenderActivity(swapChain, commandPool, pipelineCache, scene)
         vulkanModels = ArrayList()
     }
 
@@ -46,15 +46,32 @@ class Render(window: Window, scene: Scene) {
     }
 
     fun render(window: Window, scene: Scene) {
-        swapChain.acquireNextImage()
+        if (window.width <= 0 && window.height <= 0) {
+            return
+        }
+        if (window.resized || swapChain.acquireNextImage()) {
+            window.resized = false
+            resize(window)
+            scene.projection.resize(window.width, window.height)
+            swapChain.acquireNextImage()
+        }
         fwdRenderActivity.recordCommandBuffer(vulkanModels)
         fwdRenderActivity.submit(presentQueue)
-        swapChain.presentImage(graphQueue)
+        if (swapChain.presentImage(graphQueue)) {
+            window.resized = true
+        }
     }
-
     fun loadModels(modelDataList: List<ModelData>) {
         Logger.debug("Loading {} model(s)", modelDataList.size)
         vulkanModels.addAll(VulkanModel.transformModels(modelDataList, commandPool, graphQueue))
         Logger.debug("Loaded {} model(s)", modelDataList.size)
+    }
+    fun resize(window: Window) {
+        val engProps = EngineProperties.instance
+        device.waitIdle()
+        graphQueue.waitIdle()
+        swapChain.cleanup()
+        swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
+        fwdRenderActivity.resize(swapChain)
     }
 }

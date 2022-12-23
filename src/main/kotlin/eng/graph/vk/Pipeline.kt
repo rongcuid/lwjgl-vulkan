@@ -57,6 +57,16 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
             val colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pAttachments(blendAttState)
+            var ds: VkPipelineDepthStencilStateCreateInfo? = null
+            if (pipeLineCreationInfo.hasDepthAttachment) {
+                ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                    .`sType$Default`()
+                    .depthTestEnable(true)
+                    .depthWriteEnable(true)
+                    .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+                    .depthBoundsTestEnable(false)
+                    .stencilTestEnable(false)
+            }
             val vkPipelineDynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pDynamicStates(
@@ -65,8 +75,16 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
                         VK_DYNAMIC_STATE_SCISSOR
                     )
                 )
+            var vpcr: VkPushConstantRange.Buffer? = null
+            if (pipeLineCreationInfo.pushConstantsSize > 0) {
+                vpcr = VkPushConstantRange.calloc(1, stack)
+                    .stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+                    .offset(0)
+                    .size(pipeLineCreationInfo.pushConstantsSize)
+            }
             val pPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                 .`sType$Default`()
+                .pPushConstantRanges(vpcr)
             vkCheck(
                 vkCreatePipelineLayout(device.vkDevice, pPipelineLayoutCreateInfo, null, lp),
                 "Failed to create pipeline layout"
@@ -84,6 +102,9 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
                 .pDynamicState(vkPipelineDynamicStateCreateInfo)
                 .layout(vkPipelineLayout)
                 .renderPass(pipeLineCreationInfo.vkRenderPass)
+            if (ds != null) {
+                pipeline.pDepthStencilState(ds)
+            }
             vkCheck(
                 vkCreateGraphicsPipelines(device.vkDevice, pipelineCache.vkPipelineCache, pipeline, null, lp),
                 "Error creating graphics pipeline"
@@ -98,8 +119,8 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
     }
 
     data class PipelineCreationInfo(
-        val vkRenderPass: Long, val shaderProgram: ShaderProgram,
-        val numColorAttachments: Int,
+        val vkRenderPass: Long, val shaderProgram: ShaderProgram, val numColorAttachments: Int,
+        val hasDepthAttachment: Boolean, val pushConstantsSize: Int,
         val viInputStateInfo: VertexInputStateInfo
     ) {
         fun cleanup() {

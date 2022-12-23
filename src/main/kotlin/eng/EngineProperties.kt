@@ -12,6 +12,9 @@ class EngineProperties {
     var vSync: Boolean = true
     var requestedImages: Int = DEFAULT_REQUESTED_IMAGES
     var shaderRecompilation: Boolean = false
+    var fov: Float = DEFAULT_FOV
+    var zFar: Float = DEFAULT_Z_FAR
+    var zNear: Float = DEFAULT_Z_NEAR
 
     init {
         val props = Properties()
@@ -24,6 +27,9 @@ class EngineProperties {
             requestedImages = props.getOrDefault("requestedImages", DEFAULT_REQUESTED_IMAGES).toString().toInt()
             vSync = props.getOrDefault("vsync", true).toString().toBoolean()
             shaderRecompilation = props.getOrDefault("shaderRecompilation", false).toString().toBoolean()
+            fov = Math.toRadians(props.getOrDefault("fov", DEFAULT_FOV).toString().toDouble()).toFloat()
+            zFar = props.getOrDefault("zFar", DEFAULT_Z_FAR).toString().toFloat()
+            zNear = props.getOrDefault("zNear", DEFAULT_Z_NEAR).toString().toFloat()
         } catch (e: IOException) {
             Logger.error("Could not read [{}] properties file", FILENAME, e)
         }
@@ -33,6 +39,9 @@ class EngineProperties {
         private const val DEFAULT_REQUESTED_IMAGES = 3
         private const val DEFAULT_UPS: Int = 30
         private const val FILENAME = "eng.properties"
+        private const val DEFAULT_FOV = 60f
+        private const val DEFAULT_Z_FAR = 100f
+        private const val DEFAULT_Z_NEAR = 1f
         val instance: EngineProperties = EngineProperties()
     }
 }

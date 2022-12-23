@@ -15,5 +15,5 @@ class ModelData(modelId: String, meshDataList: List<MeshData>) {
         this.meshDataList = meshDataList
     }
 
-    data class MeshData(val positions: FloatArray, val indices: IntArray)
+    data class MeshData(val positions: FloatArray, val textCoords: FloatArray?, val indices: IntArray)
 }

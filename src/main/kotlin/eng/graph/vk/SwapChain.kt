@@ -19,6 +19,7 @@ class SwapChain(device: Device, surface: Surface, window: Window, requestedImage
     val vkSwapChain: Long
     val syncSemaphoresList: Array<SyncSemaphores>
     var currentFrame: Int
+    val numImages: Int get() = imageViews.size
 
     init {
         Logger.debug("Creating Vulkan swapchain")
