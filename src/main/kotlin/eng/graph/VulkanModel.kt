@@ -85,10 +85,8 @@ class VulkanModel(val modelId: String) {
                                       cmd: CommandBuffer, textureList: MutableList<Texture>): VulkanMaterial {
             val texture = textureCache.createTexture(device, material.texturePath, VK_FORMAT_R8G8B8A8_SRGB)
             val hasTexture = material.texturePath != null && material.texturePath.trim().isNotEmpty()
-            if (hasTexture) {
-                texture.recordTextureTransition(cmd)
-                textureList.add(texture)
-            }
+            texture.recordTextureTransition(cmd)
+            textureList.add(texture)
             return VulkanMaterial(material.diffuseColor, texture, hasTexture, ArrayList())
         }
 

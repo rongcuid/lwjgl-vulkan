@@ -1,5 +1,6 @@
 package eng.scene
 
+import eng.EngineProperties
 import org.joml.*
 import org.lwjgl.assimp.*
 import org.lwjgl.assimp.Assimp.*
