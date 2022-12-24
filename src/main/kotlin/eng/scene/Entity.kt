@@ -3,20 +3,18 @@ package eng.scene
 import org.joml.*
 
 class Entity(id: String, modelId: String, position: Vector3f) {
-    val id: String
-    val modelId: String
-    val modelMatrix: Matrix4f
-    val position: Vector3f
-    val rotation: Quaternionf
-    var scale: Float
+    val id: String = id
+    val modelId: String = modelId
+    val modelMatrix: Matrix4f = Matrix4f()
+    val position: Vector3f = position
+    val rotation: Quaternionf = Quaternionf()
+    var scale: Float = 1f
+        set(value) {
+            field = value
+            updateModelMatrix()
+        }
 
     init {
-        this.id = id
-        this.modelId = modelId
-        this.position = position
-        scale = 1f
-        rotation = Quaternionf()
-        modelMatrix = Matrix4f()
         updateModelMatrix()
     }
 
@@ -24,11 +22,6 @@ class Entity(id: String, modelId: String, position: Vector3f) {
         position.x = x
         position.y = y
         position.z = z
-        updateModelMatrix()
-    }
-
-    fun setScale(scale: Float) {
-        this.scale = scale
         updateModelMatrix()
     }
 
