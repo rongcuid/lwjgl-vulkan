@@ -37,12 +37,12 @@ class Render(window: Window, scene: Scene) {
         presentQueue.waitIdle()
         fwdRenderActivity.cleanup()
         commandPool.cleanup()
+        vulkanModels.forEach(VulkanModel::cleanup)
         swapChain.cleanup()
         surface.cleanup()
         device.cleanup()
         physicalDevice.cleanup()
         instance.cleanup()
-        vulkanModels.forEach(VulkanModel::cleanup)
     }
 
     fun render(window: Window, scene: Scene) {

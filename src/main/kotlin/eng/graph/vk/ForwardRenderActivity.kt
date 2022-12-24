@@ -94,11 +94,14 @@ class ForwardRenderActivity(
     }
 
     fun cleanup() {
+        fwdShaderProgram.cleanup()
+        pipelineCache.cleanup()
         depthAttachments.forEach(Attachment::cleanup)
         frameBuffers.forEach(FrameBuffer::cleanup)
         renderPass.cleanup()
         commandBuffers.forEach(CommandBuffer::cleanup)
         fences.forEach(Fence::cleanup)
+        pipeline.cleanup()
     }
 
     fun recordCommandBuffer(vulkanModelList: List<VulkanModel>) {
