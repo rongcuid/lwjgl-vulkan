@@ -44,6 +44,17 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
             val vkPipelineMultisampleStateCreationInfo = VkPipelineMultisampleStateCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+            var ds: VkPipelineDepthStencilStateCreateInfo? = null
+            if (pipeLineCreationInfo.hasDepthAttachment) {
+                ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
+                    .`sType$Default`()
+                    .depthTestEnable(true)
+                    .depthWriteEnable(true)
+                    .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+                    .depthBoundsTestEnable(false)
+                    .stencilTestEnable(false)
+            }
+
             val blendAttState = VkPipelineColorBlendAttachmentState.calloc(
                 pipeLineCreationInfo.numColorAttachments, stack
             )
@@ -57,16 +68,6 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
             val colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pAttachments(blendAttState)
-            var ds: VkPipelineDepthStencilStateCreateInfo? = null
-            if (pipeLineCreationInfo.hasDepthAttachment) {
-                ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
-                    .`sType$Default`()
-                    .depthTestEnable(true)
-                    .depthWriteEnable(true)
-                    .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
-                    .depthBoundsTestEnable(false)
-                    .stencilTestEnable(false)
-            }
             val vkPipelineDynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pDynamicStates(
