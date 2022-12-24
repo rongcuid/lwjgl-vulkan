@@ -65,7 +65,7 @@ class Main : IAppLogic {
         render.loadModels(modelDataList)
 
         cubeEntity = Entity("CubeEntity", modelId, Vector3f(0f, 0f, 0f))
-        cubeEntity!!.setPosition(0f, 0f, 2f)
+        cubeEntity!!.setPosition(0f, 0f, -2f)
         scene.addEntity(cubeEntity!!)
     }
 }
