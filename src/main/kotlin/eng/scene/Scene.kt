@@ -27,7 +27,7 @@ class Scene(window: Window) {
         entitiesMap.clear()
     }
     fun removeEntity(entity: Entity) {
-        val entities = entitiesMap.get(entity.modelId)
+        val entities = entitiesMap[entity.modelId]
         entities?.removeIf{it.id == entity.id}
     }
 }

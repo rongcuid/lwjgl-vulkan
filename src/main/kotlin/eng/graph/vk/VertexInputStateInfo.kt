@@ -30,7 +30,7 @@ class VertexBufferStructure : VertexInputStateInfo() {
         viAttrs[1]
             .binding(0)
             .location(1)
-            .format(VK_FORMAT_R32G32B32_SFLOAT)
+            .format(VK_FORMAT_R32G32_SFLOAT)
             .offset(POSITION_COMPONENTS * GraphConstants.FLOAT_LENGTH)
         viBindings[0]
             .binding(0)

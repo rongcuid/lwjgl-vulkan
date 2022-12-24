@@ -8,7 +8,7 @@ class Entity(id: String, modelId: String, position: Vector3f) {
     val modelMatrix: Matrix4f
     val position: Vector3f
     val rotation: Quaternionf
-    val scale: Float
+    var scale: Float
 
     init {
         this.id = id
@@ -24,6 +24,11 @@ class Entity(id: String, modelId: String, position: Vector3f) {
         position.x = x
         position.y = y
         position.z = z
+        updateModelMatrix()
+    }
+
+    fun setScale(scale: Float) {
+        this.scale = scale
         updateModelMatrix()
     }
 
