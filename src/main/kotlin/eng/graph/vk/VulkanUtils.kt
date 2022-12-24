@@ -1,7 +1,10 @@
 package eng.graph.vk
 
-import org.lwjgl.vulkan.VK13.VK_MAX_MEMORY_TYPES
-import org.lwjgl.vulkan.VK13.VK_SUCCESS
+import org.joml.Matrix4f
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VkCommandBuffer
 
 class VulkanUtils {
     companion object {
@@ -25,6 +28,26 @@ class VulkanUtils {
                 throw RuntimeException("Failed to find memoryType")
             }
             return result
+        }
+
+        fun copyMatrixToBuffer(buffer: VulkanBuffer, matrix: Matrix4f) {
+            copyMatrixToBuffer(buffer, matrix, 0)
+        }
+
+        private fun copyMatrixToBuffer(buffer: VulkanBuffer, matrix: Matrix4f, offset: Int) {
+            val mappedMemory = buffer.map()
+            val matrixBuffer = MemoryUtil.memByteBuffer(mappedMemory, buffer.requestedSize.toInt())
+            matrix.get(offset, matrixBuffer)
+            buffer.unmap()
+        }
+
+        fun setMatrixAsPushConstant(pipeline: Pipeline, cmdHandle: VkCommandBuffer, matrix: Matrix4f) {
+            MemoryStack.stackPush().use {stack ->
+                val pushConstantBuffer = stack.malloc(GraphConstants.MAT4X4_SIZE)
+                matrix.get(0, pushConstantBuffer)
+                vkCmdPushConstants(cmdHandle, pipeline.vkPipelineLayout,
+                    VK_SHADER_STAGE_VERTEX_BIT, 0, pushConstantBuffer)
+            }
         }
     }
 }

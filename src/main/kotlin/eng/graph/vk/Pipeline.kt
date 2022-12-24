@@ -83,8 +83,15 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
                     .offset(0)
                     .size(pipeLineCreationInfo.pushConstantsSize)
             }
+            val descriptorSetLayouts = pipeLineCreationInfo.descriptorSetLayouts
+            val numLayouts = descriptorSetLayouts?.size ?: 0
+            val ppLayout = stack.mallocLong(numLayouts)
+            for (i in 0 until numLayouts) {
+                ppLayout.put(i, descriptorSetLayouts!![i].vkDescriptorLayout)
+            }
             val pPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack)
                 .`sType$Default`()
+                .pSetLayouts(ppLayout)
                 .pPushConstantRanges(vpcr)
             vkCheck(
                 vkCreatePipelineLayout(device.vkDevice, pPipelineLayoutCreateInfo, null, lp),
@@ -122,7 +129,7 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
     data class PipelineCreationInfo(
         val vkRenderPass: Long, val shaderProgram: ShaderProgram, val numColorAttachments: Int,
         val hasDepthAttachment: Boolean, val pushConstantsSize: Int,
-        val viInputStateInfo: VertexInputStateInfo
+        val viInputStateInfo: VertexInputStateInfo, val descriptorSetLayouts: Array<DescriptorSetLayout>?
     ) {
         fun cleanup() {
             viInputStateInfo.cleanup()

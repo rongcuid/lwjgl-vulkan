@@ -1,23 +1,19 @@
-package eng.graph.vk
+package eng.graph
 
-import eng.graph.vk.ModelData.MeshData
-import org.lwjgl.*
+import eng.graph.vk.*
+import eng.scene.ModelData
+import eng.scene.ModelData.MeshData
+import org.joml.Vector4f
 import org.lwjgl.system.*
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 
 
-class VulkanModel(modelId: String) {
-    val modelId: String
-    var vulkanMeshList: MutableList<VulkanMesh>
-
-    init {
-        this.modelId = modelId
-        vulkanMeshList = ArrayList()
-    }
+class VulkanModel(val modelId: String) {
+    val vulkanMaterialList = ArrayList<VulkanMaterial>()
 
     fun cleanup() {
-        vulkanMeshList.forEach(VulkanMesh::cleanup)
+        vulkanMaterialList.forEach { it.vulkanMeshList.forEach(VulkanMesh::cleanup) }
     }
 
     data class VulkanMesh(val verticesBuffer: VulkanBuffer, val indicesBuffer: VulkanBuffer, val numIndices: Int) {
@@ -61,6 +57,7 @@ class VulkanModel(modelId: String) {
 
             return TransferBuffers(srcBuffer, dstBuffer)
         }
+
         private fun createIndicesBuffers(device: Device, meshData: MeshData): TransferBuffers {
             val indices: IntArray = meshData.indices
             val numIndices = indices.size
@@ -84,15 +81,34 @@ class VulkanModel(modelId: String) {
             return TransferBuffers(srcBuffer, dstBuffer)
         }
 
-        fun transformModels(modelDataList: List<ModelData>, commandPool: CommandPool, queue: Queue): List<VulkanModel> {
+        private fun transformMaterial(material: ModelData.Material, device: Device, textureCache: TextureCache,
+                                      cmd: CommandBuffer, textureList: MutableList<Texture>): VulkanMaterial {
+            val texture = textureCache.createTexture(device, material.texturePath, VK_FORMAT_R8G8B8A8_SRGB)
+            val hasTexture = material.texturePath != null && material.texturePath.trim().isNotEmpty()
+            if (hasTexture) {
+                texture.recordTextureTransition(cmd)
+                textureList.add(texture)
+            }
+            return VulkanMaterial(material.diffuseColor, texture, hasTexture, ArrayList())
+        }
+
+        fun transformModels(modelDataList: List<ModelData>, textureCache: TextureCache, commandPool: CommandPool, queue: Queue): List<VulkanModel> {
             val vulkanModelList = ArrayList<VulkanModel>()
             val device = commandPool.device
             val cmd = CommandBuffer(commandPool, true, true)
             val stagingBufferList = ArrayList<VulkanBuffer>()
+            val textureList = ArrayList<Texture>()
             cmd.beginRecording()
             for (modelData in modelDataList) {
                 val vulkanModel = VulkanModel(modelData.modelId)
                 vulkanModelList.add(vulkanModel)
+                // Create textures defined for materials
+                var defaultVulkanMaterial: VulkanMaterial? = null
+                for (mat in modelData.materialList) {
+                    val vulkanMaterial = transformMaterial(mat, device, textureCache, cmd, textureList)
+                    vulkanModel.vulkanMaterialList.add(vulkanMaterial)
+                }
+                // Transform meshes loading their data into GPU buffers
                 for (meshData in modelData.meshDataList) {
                     val verticesBuffers = createVerticesBuffers(device, meshData)
                     val indicesBuffers = createIndicesBuffers(device, meshData)
@@ -105,7 +121,18 @@ class VulkanModel(modelId: String) {
                         verticesBuffers.dstBuffer,
                         indicesBuffers.dstBuffer, meshData.indices.size
                     )
-                    vulkanModel.vulkanMeshList.add(vulkanMesh)
+
+                    val vulkanMaterial: VulkanMaterial
+                    val materialIdx = meshData.materialIdx
+                    if (materialIdx >= 0 && materialIdx < vulkanModel.vulkanMaterialList.size) {
+                        vulkanMaterial = vulkanModel.vulkanMaterialList[materialIdx]
+                    } else {
+                        if (defaultVulkanMaterial == null) {
+                            defaultVulkanMaterial = transformMaterial(ModelData.Material(), device, textureCache, cmd, textureList)
+                        }
+                        vulkanMaterial = defaultVulkanMaterial
+                    }
+                    vulkanMaterial.vulkanMeshList.add(vulkanMesh)
                 }
             }
             cmd.endRecording()
@@ -118,6 +145,7 @@ class VulkanModel(modelId: String) {
             fence.cleanup()
             cmd.cleanup()
             stagingBufferList.forEach(VulkanBuffer::cleanup)
+            textureList.forEach(Texture::cleanupStgBuffer)
             return vulkanModelList
         }
 
@@ -125,11 +153,18 @@ class VulkanModel(modelId: String) {
             MemoryStack.stackPush().use { stack ->
                 val copyRegion = VkBufferCopy.calloc(1, stack)
                     .srcOffset(0).dstOffset(0).size(transferBuffers.srcBuffer.requestedSize)
-                vkCmdCopyBuffer(cmd.vkCommandBuffer, transferBuffers.srcBuffer.buffer,
-                    transferBuffers.dstBuffer.buffer, copyRegion)
+                vkCmdCopyBuffer(
+                    cmd.vkCommandBuffer, transferBuffers.srcBuffer.buffer,
+                    transferBuffers.dstBuffer.buffer, copyRegion
+                )
             }
         }
     }
 
     data class TransferBuffers(val srcBuffer: VulkanBuffer, val dstBuffer: VulkanBuffer)
+
+    data class VulkanMaterial(
+        val diffuseColor: Vector4f, val texture: Texture,
+        val hasTexture: Boolean, val vulkanMeshList: MutableList<VulkanMesh>
+    )
 }

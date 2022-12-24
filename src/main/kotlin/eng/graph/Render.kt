@@ -3,6 +3,7 @@ package eng.graph
 import eng.EngineProperties
 import eng.Window
 import eng.graph.vk.*
+import eng.scene.ModelData
 import eng.scene.Scene
 import org.tinylog.kotlin.Logger
 
@@ -18,6 +19,7 @@ class Render(window: Window, scene: Scene) {
     val presentQueue: Queue.PresentQueue
     val fwdRenderActivity: ForwardRenderActivity
     val vulkanModels: MutableList<VulkanModel>
+    val textureCache: TextureCache
     init {
         val engProps = EngineProperties.instance
         instance = Instance(engProps.validate)
@@ -31,9 +33,11 @@ class Render(window: Window, scene: Scene) {
         pipelineCache = PipelineCache(device)
         fwdRenderActivity = ForwardRenderActivity(swapChain, commandPool, pipelineCache, scene)
         vulkanModels = ArrayList()
+        textureCache = TextureCache()
     }
 
     fun cleanup() {
+        textureCache.cleanup()
         presentQueue.waitIdle()
         fwdRenderActivity.cleanup()
         commandPool.cleanup()
@@ -63,8 +67,10 @@ class Render(window: Window, scene: Scene) {
     }
     fun loadModels(modelDataList: List<ModelData>) {
         Logger.debug("Loading {} model(s)", modelDataList.size)
-        vulkanModels.addAll(VulkanModel.transformModels(modelDataList, commandPool, graphQueue))
+        vulkanModels.addAll(VulkanModel.transformModels(modelDataList, textureCache, commandPool, graphQueue))
         Logger.debug("Loaded {} model(s)", modelDataList.size)
+
+        fwdRenderActivity.registerModels(vulkanModels)
     }
     fun resize(window: Window) {
         val engProps = EngineProperties.instance

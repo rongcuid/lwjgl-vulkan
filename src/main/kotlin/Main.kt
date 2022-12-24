@@ -1,9 +1,10 @@
 import eng.Engine
 import eng.Window
 import eng.graph.Render
-import eng.graph.vk.ModelData
-import eng.graph.vk.ModelData.MeshData
+import eng.scene.ModelData
+import eng.scene.ModelData.MeshData
 import eng.scene.Entity
+import eng.scene.ModelLoader
 import eng.scene.Scene
 import org.joml.Vector3f
 import org.tinylog.kotlin.Logger
@@ -27,46 +28,16 @@ class Main : IAppLogic {
     }
 
     override fun init(window: Window, scene: Scene, render: Render) {
-        val positions = floatArrayOf(
-            -0.5f, 0.5f, 0.5f,
-            -0.5f, -0.5f, 0.5f,
-            0.5f, -0.5f, 0.5f,
-            0.5f, 0.5f, 0.5f,
-            -0.5f, 0.5f, -0.5f,
-            0.5f, 0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-            0.5f, -0.5f, -0.5f
-        )
-        val textCoords = floatArrayOf(
-            0.0f, 0.0f,
-            0.5f, 0.0f,
-            1.0f, 0.0f,
-            1.0f, 0.5f,
-            1.0f, 1.0f,
-            0.5f, 1.0f,
-            0.0f, 1.0f,
-            0.0f, 0.5f
-        )
-        val indices = intArrayOf( // Front face
-            0, 1, 3, 3, 1, 2,  // Top Face
-            4, 0, 3, 5, 4, 3,  // Right face
-            3, 2, 7, 5, 3, 7,  // Left face
-            6, 1, 0, 6, 0, 4,  // Bottom face
-            2, 1, 6, 2, 6, 7,  // Back face
-            7, 6, 4, 7, 4, 5
-        )
-        val modelId = "CubeModel"
-        val meshData = MeshData(positions, textCoords, indices)
-        val meshDataList = ArrayList<MeshData>()
-        meshDataList.add(meshData)
-        val modelData = ModelData(modelId, meshDataList)
         val modelDataList = ArrayList<ModelData>()
+        val modelId = "CubeModel"
+        val modelData = ModelLoader.loadModel(modelId, "resources/models/cube/cube.obj",
+            "resources/models/cube")
         modelDataList.add(modelData)
-        render.loadModels(modelDataList)
-
         cubeEntity = Entity("CubeEntity", modelId, Vector3f(0f, 0f, 0f))
         cubeEntity!!.setPosition(0f, 0f, -2f)
         scene.addEntity(cubeEntity!!)
+
+        render.loadModels(modelDataList)
     }
 }
 

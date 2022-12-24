@@ -9,7 +9,7 @@ import org.tinylog.kotlin.Logger
 class Device(physicalDevice: PhysicalDevice) {
     val physicalDevice: PhysicalDevice
     val vkDevice: VkDevice
-
+    val samplerAnisotropy: Boolean
     init {
         Logger.debug("Creating device")
         this.physicalDevice = physicalDevice
@@ -19,6 +19,9 @@ class Device(physicalDevice: PhysicalDevice) {
             requiredExtensions.put(0, stack.ASCII(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME))
             // Set up required features
             val features = VkPhysicalDeviceFeatures.calloc(stack)
+            val supportedFeatures = physicalDevice.vkPhysicalDeviceFeatures
+            samplerAnisotropy = supportedFeatures.samplerAnisotropy()
+            features.samplerAnisotropy(samplerAnisotropy)
             // Enable all queue families
             val queuePropsBuff = physicalDevice.vkQueueFamilyProps
             val numQueueFamilies = queuePropsBuff.capacity()
