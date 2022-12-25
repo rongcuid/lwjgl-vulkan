@@ -144,7 +144,7 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
             barrier.oldLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
                 .newLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .srcAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
-                .dstAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
+                .dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
             vkCmdPipelineBarrier(
                 cmd.vkCommandBuffer,
                 VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
