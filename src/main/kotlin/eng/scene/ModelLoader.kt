@@ -69,7 +69,7 @@ class ModelLoader {
                     null as IntBuffer?, null, null, null, null, null
                 )
                 var texturePath = aiTexturePath.dataString()
-                if (texturePath.length > 0) {
+                if (texturePath.isNotEmpty()) {
                     texturePath = texturesDir + File.separator + File(texturePath).name
                     diffuse = Vector4f(0f, 0f, 0f, 0f)
                 }

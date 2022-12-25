@@ -24,7 +24,7 @@ class VulkanModel(val modelId: String) {
     }
 
     companion object {
-        private fun createVerticesBuffers(device: Device, meshData: ModelData.MeshData): TransferBuffers {
+        private fun createVerticesBuffers(device: Device, meshData: MeshData): TransferBuffers {
             val positions = meshData.positions
             var textCoords = meshData.textCoords
             if (textCoords == null || textCoords.isEmpty()) {
@@ -139,7 +139,7 @@ class VulkanModel(val modelId: String) {
             MemoryStack.stackPush().use { stack ->
                 queue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
             }
-            fence.fenceWait();
+            fence.fenceWait()
             fence.cleanup()
             cmd.cleanup()
             stagingBufferList.forEach(VulkanBuffer::cleanup)
@@ -164,5 +164,7 @@ class VulkanModel(val modelId: String) {
     data class VulkanMaterial(
         val diffuseColor: Vector4f, val texture: Texture,
         val hasTexture: Boolean, val vulkanMeshList: MutableList<VulkanMesh>
-    )
+    ) {
+        val isTransparent: Boolean get() = texture.hasTransparencies
+    }
 }

@@ -64,6 +64,14 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
                         VK_COLOR_COMPONENT_R_BIT or VK_COLOR_COMPONENT_G_BIT or
                                 VK_COLOR_COMPONENT_B_BIT or VK_COLOR_COMPONENT_A_BIT
                     )
+                if (pipeLineCreationInfo.useBlend) {
+                    blendAttState[i].colorBlendOp(VK_BLEND_OP_ADD)
+                        .alphaBlendOp(VK_BLEND_OP_ADD)
+                        .srcColorBlendFactor(VK_BLEND_FACTOR_SRC_ALPHA)
+                        .dstColorBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                        .srcAlphaBlendFactor(VK_BLEND_FACTOR_ONE)
+                        .dstAlphaBlendFactor(VK_BLEND_FACTOR_ZERO)
+                }
             }
             val colorBlendState = VkPipelineColorBlendStateCreateInfo.calloc(stack)
                 .`sType$Default`()
@@ -128,7 +136,7 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
 
     data class PipelineCreationInfo(
         val vkRenderPass: Long, val shaderProgram: ShaderProgram, val numColorAttachments: Int,
-        val hasDepthAttachment: Boolean, val pushConstantsSize: Int,
+        val hasDepthAttachment: Boolean, val useBlend: Boolean, val pushConstantsSize: Int,
         val viInputStateInfo: VertexInputStateInfo, val descriptorSetLayouts: Array<DescriptorSetLayout>?
     ) {
         fun cleanup() {

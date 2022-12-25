@@ -3,9 +3,12 @@ package eng.graph
 import eng.EngineProperties
 import eng.Window
 import eng.graph.vk.*
+import eng.graph.vk.Queue
 import eng.scene.ModelData
 import eng.scene.Scene
 import org.tinylog.kotlin.Logger
+import java.util.*
+import kotlin.collections.ArrayList
 
 class Render(window: Window, scene: Scene) {
     val instance: Instance
@@ -69,6 +72,18 @@ class Render(window: Window, scene: Scene) {
         Logger.debug("Loading {} model(s)", modelDataList.size)
         vulkanModels.addAll(VulkanModel.transformModels(modelDataList, textureCache, commandPool, graphQueue))
         Logger.debug("Loaded {} model(s)", modelDataList.size)
+
+        // Reorder materials inside models
+        vulkanModels.forEach {
+            it.vulkanMaterialList.sortWith { a, b -> a.isTransparent.compareTo(b.isTransparent) }
+        }
+
+        // Reorder models
+        vulkanModels.sortWith { a, b ->
+            val aHasTransparentMt = a.vulkanMaterialList.any { it.isTransparent }
+            val bHasTransparentMt = b.vulkanMaterialList.any { it.isTransparent }
+            aHasTransparentMt.compareTo(bHasTransparentMt)
+        }
 
         fwdRenderActivity.registerModels(vulkanModels)
     }

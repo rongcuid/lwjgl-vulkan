@@ -5,6 +5,7 @@ import eng.Window
 class Scene(window: Window) {
     val entitiesMap: MutableMap<String, MutableList<Entity>>
     val projection: Projection
+    val camera = Camera()
 
     init {
         entitiesMap = HashMap()

@@ -7,6 +7,7 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.*
 import org.tinylog.kotlin.Logger
 import java.nio.ByteBuffer
+import kotlin.math.*
 
 class Texture(device: Device, val fileName: String, imageFormat: Int) {
     private var recordedTransition: Boolean = false
@@ -16,6 +17,7 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
     private val image: Image
     val imageView: ImageView
     private var stgBuffer: VulkanBuffer?
+    val hasTransparencies: Boolean
 
     init {
         val buf: ByteBuffer
@@ -28,7 +30,8 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
                 ?: throw RuntimeException("Image file [$fileName] not loaded: ${stbi_failure_reason()}")
             width = w.get()
             height = h.get()
-            mipLevels = 1
+            mipLevels = floor(log2(min(width, height).toDouble())).toInt() + 1
+            hasTransparencies = hasTransparencies(buf)
 
             stgBuffer = createStgBuffer(device, buf)
             val imageData = Image.ImageData().width(width).height(height)
@@ -74,16 +77,91 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
             MemoryStack.stackPush().use { stack ->
                 recordImageTransition(stack, cmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
                 recordCopyBuffer(stack, cmd, stgBuffer!!)
-                recordImageTransition(
-                    stack,
-                    cmd,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                )
+                recordGenerateMipMaps(stack, cmd)
             }
         } else {
             Logger.debug("Texture [$fileName] has already been transitioned")
         }
+    }
+
+    private fun recordGenerateMipMaps(stack: MemoryStack, cmd: CommandBuffer) {
+        val subResourceRange = VkImageSubresourceRange.calloc(stack)
+            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .baseArrayLayer(0)
+            .levelCount(1)
+            .layerCount(1)
+        val barrier = VkImageMemoryBarrier.calloc(1, stack)
+            .`sType$Default`()
+            .image(image.vkImage)
+            .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .subresourceRange(subResourceRange)
+        var mipWidth = width
+        var mipHeight = height
+        for (i in 1 until mipLevels) {
+            subResourceRange.baseMipLevel(i - 1)
+            barrier.subresourceRange(subResourceRange)
+                .oldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                .newLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .dstAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
+            vkCmdPipelineBarrier(
+                cmd.vkCommandBuffer,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                null, null, barrier
+            )
+            val auxi = i
+            val srcOffset0 = VkOffset3D.calloc(stack).x(0).y(0).z(0)
+            val srcOffset1 = VkOffset3D.calloc(stack).x(mipWidth).y(mipHeight).z(1)
+            val dstOffset0 = VkOffset3D.calloc(stack).x(0).y(0).z(0)
+            val dstOffset1 = VkOffset3D.calloc(stack)
+                .x(if (mipWidth > 1) mipWidth / 2 else 1)
+                .y(if (mipHeight > 1) mipHeight / 2 else 1)
+                .z(1)
+            val blit = VkImageBlit.calloc(1, stack)
+                .srcOffsets(0, srcOffset0)
+                .srcOffsets(1, srcOffset1)
+                .srcSubresource {
+                    it.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevel(auxi - 1)
+                        .baseArrayLayer(0)
+                        .layerCount(1)
+                }
+                .dstOffsets(0, dstOffset0)
+                .dstOffsets(1, dstOffset1)
+                .dstSubresource {
+                    it.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .mipLevel(auxi)
+                        .baseArrayLayer(0)
+                        .layerCount(1)
+                }
+            vkCmdBlitImage(
+                cmd.vkCommandBuffer,
+                image.vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                image.vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                blit, VK_FILTER_LINEAR
+            )
+            barrier.oldLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .newLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .srcAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
+                .dstAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
+            vkCmdPipelineBarrier(
+                cmd.vkCommandBuffer,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                null, null, barrier
+            )
+
+            if (mipWidth > 1) mipWidth /= 2
+            if (mipHeight > 1) mipHeight /= 2
+        }
+        barrier.subresourceRange {it.baseMipLevel(mipLevels - 1) }
+            .oldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .newLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
+        vkCmdPipelineBarrier(cmd.vkCommandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            null, null, barrier)
     }
 
     private fun recordImageTransition(stack: MemoryStack, cmd: CommandBuffer, oldLayout: Int, newLayout: Int) {
@@ -138,7 +216,24 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
             }
             .imageOffset { it.x(0).y(0).z(0) }
             .imageExtent { it.width(width).height(height).depth(1) }
-        vkCmdCopyBufferToImage(cmd.vkCommandBuffer, bufferData.buffer, image.vkImage,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region)
+        vkCmdCopyBufferToImage(
+            cmd.vkCommandBuffer, bufferData.buffer, image.vkImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region
+        )
+    }
+
+    companion object {
+        private fun hasTransparencies(buf: ByteBuffer): Boolean {
+            val numPixels = buf.capacity() / 4
+            var offset = 0
+            for (i in 0 until numPixels) {
+                val a = (0xFF and buf[offset + 3].toInt())
+                if (a < 255) {
+                    return true
+                }
+                offset += 4
+            }
+            return false
+        }
     }
 }

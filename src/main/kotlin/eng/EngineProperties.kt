@@ -16,6 +16,7 @@ class EngineProperties {
     var zFar: Float = DEFAULT_Z_FAR
     var zNear: Float = DEFAULT_Z_NEAR
     var defaultTexturePath: String? = null
+    var maxMaterials: Int = DEFAULT_MAX_MATERIALS
 
     init {
         val props = Properties()
@@ -32,6 +33,7 @@ class EngineProperties {
             zFar = props.getOrDefault("zFar", DEFAULT_Z_FAR).toString().toFloat()
             zNear = props.getOrDefault("zNear", DEFAULT_Z_NEAR).toString().toFloat()
             defaultTexturePath = props.getProperty("defaultTexturePath")
+            maxMaterials = props.getOrDefault("maxMaterials", DEFAULT_MAX_MATERIALS).toString().toInt()
         } catch (e: IOException) {
             Logger.error("Could not read [{}] properties file", FILENAME, e)
         }
@@ -44,6 +46,7 @@ class EngineProperties {
         private const val DEFAULT_FOV = 60f
         private const val DEFAULT_Z_FAR = 100f
         private const val DEFAULT_Z_NEAR = 1f
+        private const val DEFAULT_MAX_MATERIALS = 500
         val instance: EngineProperties = EngineProperties()
     }
 }

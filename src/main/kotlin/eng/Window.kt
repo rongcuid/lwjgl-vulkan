@@ -10,7 +10,7 @@ import java.lang.RuntimeException
 class Window(title: String, keyCallback: GLFWKeyCallbackI? = null) {
     var height: Int private set
     var width: Int private set
-    private val mouseInput: MouseInput
+    val mouseInput: MouseInput
     var resized: Boolean
     var windowHandle: Long private set
 
