@@ -116,6 +116,14 @@ class ForwardRenderActivity(
                 descriptorPool, uniformDescriptorSetLayout,
                 projMatrixUniform, 0
             )
+            materialsBuffer = VulkanBuffer(
+                device, (materialSize * engineProperties.maxMaterials).toLong(),
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            )
+            materialsDescriptorSet = DescriptorSet.DynUniformDescriptorSet(
+                descriptorPool, materialDescriptorSetLayout,
+                materialsBuffer, 0, materialSize.toLong()
+            )
             viewMatricesBuffer = Array(numImages) {
                 VulkanBuffer(
                     device, GraphConstants.MAT4X4_SIZE.toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -125,14 +133,7 @@ class ForwardRenderActivity(
             viewMatricesDescriptorSets = Array(numImages) {
                 UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout, viewMatricesBuffer[it], 0)
             }
-            materialsBuffer = VulkanBuffer(
-                device, (materialSize * engineProperties.maxMaterials).toLong(),
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-            )
-            materialsDescriptorSet = DescriptorSet.DynUniformDescriptorSet(
-                descriptorPool, materialDescriptorSetLayout,
-                materialsBuffer, 0, materialSize.toLong()
-            )
+
 
             VulkanUtils.copyMatrixToBuffer(projMatrixUniform, scene.projection.projectionMatrix)
 

@@ -35,7 +35,7 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
 
             stgBuffer = createStgBuffer(device, buf)
             val imageData = Image.ImageData().width(width).height(height)
-                .usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
+                .usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT  or VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
                 .format(imageFormat).mipLevels(mipLevels)
             image = Image(device, imageData)
             val imageViewData = ImageView.ImageViewData()
@@ -147,7 +147,7 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
                 .dstAccessMask(VK_ACCESS_TRANSFER_READ_BIT)
             vkCmdPipelineBarrier(
                 cmd.vkCommandBuffer,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
                 null, null, barrier
             )
 
