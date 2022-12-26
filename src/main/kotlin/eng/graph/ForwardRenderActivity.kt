@@ -191,16 +191,16 @@ class ForwardRenderActivity(
         projMatrixUniform.cleanup()
         textureSampler.cleanup()
         descriptorPool.cleanup()
-        fwdShaderProgram.cleanup()
-        pipelineCache.cleanup()
+        pipeline.cleanup()
+        uniformDescriptorSetLayout.cleanup()
+        textureDescriptorSetLayout.cleanup()
+        materialDescriptorSetLayout.cleanup()
         depthAttachments.forEach(Attachment::cleanup)
+        fwdShaderProgram.cleanup()
         frameBuffers.forEach(FrameBuffer::cleanup)
         renderPass.cleanup()
         commandBuffers.forEach(CommandBuffer::cleanup)
         fences.forEach(Fence::cleanup)
-        descriptorSetLayouts.forEach(DescriptorSetLayout::cleanup)
-        materialDescriptorSetLayout.cleanup()
-        pipeline.cleanup()
     }
 
     fun recordCommandBuffer(vulkanModelList: List<VulkanModel>) {

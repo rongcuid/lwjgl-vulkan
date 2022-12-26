@@ -45,6 +45,7 @@ class Render(window: Window, scene: Scene) {
         fwdRenderActivity.cleanup()
         commandPool.cleanup()
         vulkanModels.forEach(VulkanModel::cleanup)
+        pipelineCache.cleanup()
         swapChain.cleanup()
         surface.cleanup()
         device.cleanup()
