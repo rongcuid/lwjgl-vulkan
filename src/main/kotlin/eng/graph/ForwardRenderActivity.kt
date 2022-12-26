@@ -1,7 +1,7 @@
-package eng.graph.vk
+package eng.graph
 
 import eng.EngineProperties
-import eng.graph.VulkanModel
+import eng.graph.vk.*
 import eng.graph.vk.DescriptorSet.UniformDescriptorSet
 import eng.graph.vk.DescriptorSetLayout.SamplerDescriptorSetLayout
 import eng.graph.vk.DescriptorSetLayout.UniformDescriptorSetLayout
