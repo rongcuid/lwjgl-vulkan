@@ -1,13 +1,14 @@
 package eng.scene
 
-import eng.EngineProperties
-import org.joml.*
+import org.joml.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.assimp.Assimp.*
-import org.lwjgl.system.*
+import org.lwjgl.system.MemoryStack
 import org.tinylog.kotlin.Logger
 import java.io.File
 import java.nio.IntBuffer
+import java.util.*
+
 
 class ModelLoader {
     companion object {
@@ -59,26 +60,82 @@ class ModelLoader {
             MemoryStack.stackPush().use { stack ->
                 val color = AIColor4D.create()
                 var diffuse = ModelData.Material.DEFAULT_COLOR
-                val result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_DIFFUSE, aiTextureType_NONE, 0, color)
+                var result = aiGetMaterialColor(aiMaterial, AI_MATKEY_COLOR_DIFFUSE, aiTextureType_NONE, 0, color)
                 if (result == aiReturn_SUCCESS) {
                     diffuse = Vector4f(color.r(), color.g(), color.b(), color.a())
                 }
-                val aiTexturePath = AIString.calloc(stack)
+                val aiDiffuseMapPath = AIString.calloc(stack)
                 aiGetMaterialTexture(
-                    aiMaterial, aiTextureType_DIFFUSE, 0, aiTexturePath,
+                    aiMaterial, aiTextureType_DIFFUSE, 0, aiDiffuseMapPath,
                     null as IntBuffer?, null, null, null, null, null
                 )
-                var texturePath = aiTexturePath.dataString()
-                if (texturePath.isNotEmpty()) {
-                    texturePath = texturesDir + File.separator + File(texturePath).name
+                var diffuseMapPath = aiDiffuseMapPath.dataString()
+                if (diffuseMapPath.isNotEmpty()) {
+                    diffuseMapPath = texturesDir + File.separator + File(diffuseMapPath).name
                     diffuse = Vector4f(0f, 0f, 0f, 0f)
                 }
-                return ModelData.Material(texturePath, diffuse)
+                val aiNormalMapPath = AIString.calloc(stack)
+                Assimp.aiGetMaterialTexture(aiMaterial, aiTextureType_NORMALS, 0, aiNormalMapPath,
+                    null as IntBuffer?, null, null, null, null, null)
+                var normalMapPath = aiNormalMapPath.dataString()
+                if (normalMapPath.isNotEmpty()) {
+                    normalMapPath = texturesDir + File.separator + File(normalMapPath).name
+                }
+
+                val aiMetallicRoughnessPath = AIString.calloc(stack)
+                aiGetMaterialTexture(
+                    aiMaterial,
+                    AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE,
+                    0,
+                    aiMetallicRoughnessPath,
+                    null as IntBuffer?,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                )
+                var metallicRoughnessPath = aiMetallicRoughnessPath.dataString()
+                if (metallicRoughnessPath != null && metallicRoughnessPath.length > 0) {
+                    metallicRoughnessPath = texturesDir + File.separator + File(metallicRoughnessPath).name
+                }
+
+                val metallicArr = floatArrayOf(0.0f)
+                val pMax = intArrayOf(1)
+                result = aiGetMaterialFloatArray(
+                    aiMaterial,
+                    AI_MATKEY_METALLIC_FACTOR,
+                    aiTextureType_NONE,
+                    0,
+                    metallicArr,
+                    pMax
+                )
+                if (result != aiReturn_SUCCESS) {
+                    metallicArr[0] = 1.0f
+                }
+
+                val roughnessArr = floatArrayOf(0.0f)
+                result = aiGetMaterialFloatArray(
+                    aiMaterial,
+                    AI_MATKEY_ROUGHNESS_FACTOR,
+                    aiTextureType_NONE,
+                    0,
+                    roughnessArr,
+                    pMax
+                )
+                if (result != aiReturn_SUCCESS) {
+                    roughnessArr[0] = 1.0f
+                }
+                return ModelData.Material(diffuseMapPath, normalMapPath, metallicRoughnessPath,
+                    diffuse, roughnessArr[0], metallicArr[0])
             }
         }
 
         private fun processMesh(aiMesh: AIMesh): ModelData.MeshData {
             val vertices = processVertices(aiMesh)
+            val normals = processNormals(aiMesh)
+            val tangents = processTangents(aiMesh, normals)
+            val biTangents = processBitangents(aiMesh, normals)
             val textCoords = processTextCoords(aiMesh)
             val indices = processIndices(aiMesh)
             if (textCoords.isEmpty()) {
@@ -90,6 +147,9 @@ class ModelLoader {
             val materialIdx = aiMesh.mMaterialIndex()
             return ModelData.MeshData(
                 vertices.toFloatArray(),
+                normals.toFloatArray(),
+                tangents.toFloatArray(),
+                biTangents.toFloatArray(),
                 textCoords.toFloatArray(),
                 indices.toIntArray(),
                 materialIdx
@@ -106,6 +166,52 @@ class ModelLoader {
                 vertices.add(aiVertex.z())
             }
             return vertices
+        }
+
+        private fun processBitangents(aiMesh: AIMesh, normals: List<Float>): List<Float> {
+            var biTangents: MutableList<Float> = ArrayList()
+            val aiBitangents = aiMesh.mBitangents()
+            while (aiBitangents != null && aiBitangents.remaining() > 0) {
+                val aiBitangent = aiBitangents.get()
+                biTangents.add(aiBitangent.x())
+                biTangents.add(aiBitangent.y())
+                biTangents.add(aiBitangent.z())
+            }
+
+            // Assimp may not calculate tangents with models that do not have texture coordinates. Just create empty values
+            if (biTangents.isEmpty()) {
+                biTangents = ArrayList(Collections.nCopies(normals.size, 0.0f))
+            }
+            return biTangents
+        }
+
+        private fun processNormals(aiMesh: AIMesh): List<Float> {
+            val normals: MutableList<Float> = ArrayList()
+            val aiNormals = aiMesh.mNormals()
+            while (aiNormals != null && aiNormals.remaining() > 0) {
+                val aiNormal = aiNormals.get()
+                normals.add(aiNormal.x())
+                normals.add(aiNormal.y())
+                normals.add(aiNormal.z())
+            }
+            return normals
+        }
+
+        private fun processTangents(aiMesh: AIMesh, normals: List<Float>): List<Float> {
+            var tangents: MutableList<Float> = ArrayList()
+            val aiTangents = aiMesh.mTangents()
+            while (aiTangents != null && aiTangents.remaining() > 0) {
+                val aiTangent = aiTangents.get()
+                tangents.add(aiTangent.x())
+                tangents.add(aiTangent.y())
+                tangents.add(aiTangent.z())
+            }
+
+            // Assimp may not calculate tangents with models that do not have texture coordinates. Just create empty values
+            if (tangents.isEmpty()) {
+                tangents = ArrayList(Collections.nCopies(normals.size, 0.0f))
+            }
+            return tangents
         }
 
         private fun processTextCoords(aiMesh: AIMesh): MutableList<Float> {

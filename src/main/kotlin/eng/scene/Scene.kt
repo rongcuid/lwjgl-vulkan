@@ -1,11 +1,22 @@
 package eng.scene
 
 import eng.Window
+import eng.graph.vk.GraphConstants
+import org.joml.Vector4f
 
 class Scene(window: Window) {
     val entitiesMap: MutableMap<String, MutableList<Entity>>
     val projection: Projection
     val camera = Camera()
+    val ambientLight = Vector4f()
+    var lights: Array<Light>? = null
+        set(lights) {
+            val numLights = lights?.size ?: 0
+            if (numLights > GraphConstants.MAX_LIGHTS) {
+                throw RuntimeException("Maximum number of lights set to: ${GraphConstants.MAX_LIGHTS}")
+            }
+            field = lights
+        }
 
     init {
         entitiesMap = HashMap()

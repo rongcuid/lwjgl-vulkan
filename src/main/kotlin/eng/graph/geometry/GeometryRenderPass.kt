@@ -27,7 +27,7 @@ class GeometryRenderPass(val device: Device, attachments: List<Attachment>) {
                     .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
                 if (attachment.isDepthAttachment) {
                     depthAttachmentPos = i
-                    attachmentsDesc[i].finalLayout(VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL)
+                    attachmentsDesc[i].finalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
                 } else {
                     attachmentsDesc[i].finalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 }

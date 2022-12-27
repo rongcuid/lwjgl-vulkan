@@ -84,6 +84,8 @@ class GeometryRenderActivity(
             uniformDescriptorSetLayout,
             uniformDescriptorSetLayout,
             textureDescriptorSetLayout,
+            textureDescriptorSetLayout,
+            textureDescriptorSetLayout,
             materialDescriptorSetLayout
         )
         val engineProps = EngineProperties.instance
@@ -105,10 +107,13 @@ class GeometryRenderActivity(
         viewMatricesDescriptorSets = Array(numImages) {
             UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout, viewMatricesBuffer[it], 0)
         }
-        materialsBuffer = VulkanBuffer(device,
+        materialsBuffer = VulkanBuffer(
+            device,
             (materialSize * engineProps.maxMaterials).toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        materialsDescriptorSet = DescriptorSet.DynUniformDescriptorSet(descriptorPool, materialDescriptorSetLayout,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        )
+        materialsDescriptorSet = DescriptorSet.DynUniformDescriptorSet(
+            descriptorPool, materialDescriptorSetLayout,
             materialsBuffer, 0, materialSize.toLong()
         )
     }
@@ -119,7 +124,7 @@ class GeometryRenderActivity(
         descriptorTypeCounts.add(DescriptorTypeCount(swapChain.numImages + 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER))
         descriptorTypeCounts.add(
             DescriptorTypeCount(
-                engineProps.maxMaterials,
+                engineProps.maxMaterials * 3,
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             )
         )
@@ -174,6 +179,8 @@ class GeometryRenderActivity(
             for (vulkanMaterial in vulkanModel.vulkanMaterialList) {
                 val materialOffset = materialCount * materialSize
                 updateTextureDescriptorSet(vulkanMaterial.texture)
+                updateTextureDescriptorSet(vulkanMaterial.normalMap)
+                updateTextureDescriptorSet(vulkanMaterial.metalRoughMap)
                 updateMaterialsBuffer(materialsBuffer, vulkanMaterial, materialOffset)
                 materialCount++
             }
@@ -184,6 +191,15 @@ class GeometryRenderActivity(
         val mappedMemory = buffer.map()
         val materialBuffer = MemoryUtil.memByteBuffer(mappedMemory, buffer.requestedSize.toInt())
         material.diffuseColor.get(offset, materialBuffer)
+        materialBuffer.putFloat(offset + GraphConstants.FLOAT_LENGTH * 4, if (material.hasTexture) 1.0f else 0.0f)
+        materialBuffer.putFloat(offset + GraphConstants.FLOAT_LENGTH * 5, if (material.hasNormalMap) 1.0f else 0.0f)
+        materialBuffer.putFloat(
+            offset + GraphConstants.FLOAT_LENGTH * 6,
+            if (material.hasMetalRoughMap) 1.0f else 0.0f
+        )
+        materialBuffer.putFloat(offset + GraphConstants.FLOAT_LENGTH * 7, material.roughnessFactor)
+        materialBuffer.putFloat(offset + GraphConstants.FLOAT_LENGTH * 8, material.metallicFactor)
+
         buffer.unmap()
     }
 
@@ -229,7 +245,7 @@ class GeometryRenderActivity(
                 .`sType$Default`()
                 .renderPass(geometryFrameBuffer.geometryRenderPass.vkRenderPass)
                 .pClearValues(clearValues)
-                .renderArea{it.extent().set(width, height)}
+                .renderArea { it.extent().set(width, height) }
                 .framebuffer(frameBuffer.vkFrameBuffer)
 
             commandBuffer.beginRecording()
@@ -245,14 +261,14 @@ class GeometryRenderActivity(
             vkCmdSetViewport(cmdHandle, 0, viewport)
 
             val scissor = VkRect2D.calloc(1, stack)
-                .extent{it.width(width).height(height)}
-                .offset{it.x(0).y(0)}
+                .extent { it.width(width).height(height) }
+                .offset { it.x(0).y(0) }
             vkCmdSetScissor(cmdHandle, 0, scissor)
 
-            val descriptorSets = stack.mallocLong(4)
+            val descriptorSets = stack.mallocLong(6)
                 .put(0, projMatrixDescriptorSet.vkDescriptorSet)
                 .put(1, viewMatricesDescriptorSets[idx].vkDescriptorSet)
-                .put(3, materialsDescriptorSet.vkDescriptorSet)
+                .put(5, materialsDescriptorSet.vkDescriptorSet)
             VulkanUtils.copyMatrixToBuffer(viewMatricesBuffer[idx], scene.camera.viewMatrix)
 
             recordEntities(stack, cmdHandle, descriptorSets, vulkanModelList)
@@ -283,15 +299,21 @@ class GeometryRenderActivity(
             for (material in vulkanModel.vulkanMaterialList) {
                 val materialOffset = materialCount * materialSize
                 dynDescrSetOffset.put(0, materialOffset)
-                val textureDescriptorSet = descriptorSetMap[material.texture.fileName]
-                descriptorSets.put(2, textureDescriptorSet!!.vkDescriptorSet)
+                val textureDescriptorSet = descriptorSetMap[material.texture.fileName]!!
+                val normalMapDescriptorSet = descriptorSetMap[material.normalMap.fileName]!!
+                val metalRoughDescriptorSet = descriptorSetMap[material.metalRoughMap.fileName]!!
                 for (mesh in material.vulkanMeshList) {
                     vertexBuffer.put(0, mesh.verticesBuffer.buffer)
                     vkCmdBindVertexBuffers(cmdHandle, 0, vertexBuffer, offsets)
                     vkCmdBindIndexBuffer(cmdHandle, mesh.indicesBuffer.buffer, 0, VK_INDEX_TYPE_UINT32)
                     for (entity in entities) {
-                        vkCmdBindDescriptorSets(cmdHandle, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline.vkPipelineLayout, 0, descriptorSets, dynDescrSetOffset)
+                        descriptorSets.put(2, textureDescriptorSet.vkDescriptorSet)
+                        descriptorSets.put(3, normalMapDescriptorSet.vkDescriptorSet)
+                        descriptorSets.put(4, metalRoughDescriptorSet.vkDescriptorSet)
+                        vkCmdBindDescriptorSets(
+                            cmdHandle, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline.vkPipelineLayout, 0, descriptorSets, dynDescrSetOffset
+                        )
                         VulkanUtils.setMatrixAsPushConstant(pipeline, cmdHandle, entity.modelMatrix)
                         vkCmdDrawIndexed(cmdHandle, mesh.numIndices, 1, 0, 0, 0)
                     }

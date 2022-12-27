@@ -26,11 +26,14 @@ class VulkanModel(val modelId: String) {
     companion object {
         private fun createVerticesBuffers(device: Device, meshData: MeshData): TransferBuffers {
             val positions = meshData.positions
+            val normals = meshData.normals
+            val tangents = meshData.tangents
+            val biTangents = meshData.biTangents
             var textCoords = meshData.textCoords
             if (textCoords == null || textCoords.isEmpty()) {
                 textCoords = FloatArray(positions.size / 3 * 2)
             }
-            val numElements = positions.size + textCoords.size
+            val numElements = positions.size + normals.size + tangents.size + biTangents.size + textCoords.size
             val bufferSize = numElements * GraphConstants.FLOAT_LENGTH
             val srcBuffer = VulkanBuffer(
                 device, bufferSize.toLong(),
@@ -50,6 +53,15 @@ class VulkanModel(val modelId: String) {
                 data.put(positions[startPos])
                 data.put(positions[startPos + 1])
                 data.put(positions[startPos + 2])
+                data.put(normals[startPos])
+                data.put(normals[startPos + 1])
+                data.put(normals[startPos + 2])
+                data.put(tangents[startPos])
+                data.put(tangents[startPos + 1])
+                data.put(tangents[startPos + 2])
+                data.put(biTangents[startPos])
+                data.put(biTangents[startPos + 1])
+                data.put(biTangents[startPos + 2])
                 data.put(textCoords[startTextCoord])
                 data.put(textCoords[startTextCoord + 1])
             }
@@ -85,9 +97,22 @@ class VulkanModel(val modelId: String) {
                                       cmd: CommandBuffer, textureList: MutableList<Texture>): VulkanMaterial {
             val texture = textureCache.createTexture(device, material.texturePath, VK_FORMAT_R8G8B8A8_SRGB)
             val hasTexture = material.texturePath != null && material.texturePath.trim().isNotEmpty()
+            val normalMapTexture = textureCache.createTexture(device, material.normalMapPath, VK_FORMAT_R8G8B8A8_UNORM)
+            val hasNormalMapTexture = !material.normalMapPath.isNullOrEmpty()
+            val metalRoughTexture = textureCache.createTexture(device, material.metalRoughMap, VK_FORMAT_R8G8B8A8_SRGB)
+            val hasMetalRoughTexture = !material.metalRoughMap.isNullOrEmpty()
+
             texture.recordTextureTransition(cmd)
             textureList.add(texture)
-            return VulkanMaterial(material.diffuseColor, texture, hasTexture, ArrayList())
+            normalMapTexture.recordTextureTransition(cmd)
+            textureList.add(normalMapTexture)
+            metalRoughTexture.recordTextureTransition(cmd)
+            textureList.add(metalRoughTexture)
+
+            return VulkanMaterial(material.diffuseColor, texture, hasTexture,
+                normalMapTexture, hasNormalMapTexture, metalRoughTexture, hasMetalRoughTexture,
+                material.metallicFactor, material.roughnessFactor,
+                ArrayList())
         }
 
         fun transformModels(modelDataList: List<ModelData>, textureCache: TextureCache, commandPool: CommandPool, queue: Queue): List<VulkanModel> {
@@ -162,8 +187,12 @@ class VulkanModel(val modelId: String) {
     data class TransferBuffers(val srcBuffer: VulkanBuffer, val dstBuffer: VulkanBuffer)
 
     data class VulkanMaterial(
-        val diffuseColor: Vector4f, val texture: Texture,
-        val hasTexture: Boolean, val vulkanMeshList: MutableList<VulkanMesh>
+        val diffuseColor: Vector4f,
+        val texture: Texture, val hasTexture: Boolean,
+        val normalMap: Texture, val hasNormalMap: Boolean,
+        val metalRoughMap: Texture, val hasMetalRoughMap: Boolean,
+        val metallicFactor: Float, val roughnessFactor: Float,
+        val vulkanMeshList: MutableList<VulkanMesh>
     ) {
         val isTransparent: Boolean get() = texture.hasTransparencies
     }
