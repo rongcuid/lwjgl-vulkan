@@ -3,19 +3,28 @@ package eng.scene
 import eng.Window
 import eng.graph.vk.GraphConstants
 import org.joml.Vector4f
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 class Scene(window: Window) {
     val entitiesMap: MutableMap<String, MutableList<Entity>>
     val projection: Projection
     val camera = Camera()
     val ambientLight = Vector4f()
+    var directionalLight: Light? = null
+    var lightChanged: Boolean = false
     var lights: Array<Light>? = null
         set(lights) {
+            directionalLight = null
             val numLights = lights?.size ?: 0
             if (numLights > GraphConstants.MAX_LIGHTS) {
                 throw RuntimeException("Maximum number of lights set to: ${GraphConstants.MAX_LIGHTS}")
             }
             field = lights
+
+            directionalLight = lights?.filter{it.position.w == 0f}?.first()
+            lightChanged = true
         }
 
     init {
@@ -35,6 +44,7 @@ class Scene(window: Window) {
     fun getEntitiesByModelId(modelId: String): List<Entity>? {
         return entitiesMap[modelId]
     }
+
     fun removeAllEntities() {
         entitiesMap.clear()
     }

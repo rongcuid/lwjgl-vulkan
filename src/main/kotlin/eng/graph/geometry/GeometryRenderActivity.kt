@@ -8,7 +8,8 @@ import eng.graph.vk.DescriptorSet.UniformDescriptorSet
 import eng.graph.vk.DescriptorSetLayout.*
 import eng.graph.vk.ShaderProgram.ShaderModuleData
 import eng.scene.Scene
-import org.lwjgl.system.*
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.shaderc.Shaderc
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
@@ -215,7 +216,22 @@ class GeometryRenderActivity(
         }
     }
 
-    fun recordCommandBuffer(vulkanModelList: List<VulkanModel>) {
+    fun beginRecording(): CommandBuffer {
+        val idx = swapChain.currentFrame
+        val fence = fences[idx]
+        val commandBuffer = commandBuffers[idx]
+        fence.fenceWait()
+        fence.reset()
+        commandBuffer.reset()
+        commandBuffer.beginRecording()
+        return commandBuffer
+    }
+
+    fun endRecording(commandBuffer: CommandBuffer) {
+        commandBuffer.endRecording()
+    }
+
+    fun recordCommandBuffer(commandBuffer: CommandBuffer, vulkanModelList: List<VulkanModel>) {
         MemoryStack.stackPush().use { stack ->
             val swapChainExtent = swapChain.swapChainExtent
             val width = swapChainExtent.width()
@@ -223,13 +239,6 @@ class GeometryRenderActivity(
             val idx = swapChain.currentFrame
 
             val frameBuffer = geometryFrameBuffer.frameBuffer
-            val fence = fences[idx]
-            val commandBuffer = commandBuffers[idx]
-
-            fence.fenceWait()
-            fence.reset()
-
-            commandBuffer.reset()
             val attachments = geometryFrameBuffer.geometryAttachments.attachments
             val clearValues = VkClearValue.calloc(attachments.size, stack)
             for (a in attachments) {
@@ -248,7 +257,6 @@ class GeometryRenderActivity(
                 .renderArea { it.extent().set(width, height) }
                 .framebuffer(frameBuffer.vkFrameBuffer)
 
-            commandBuffer.beginRecording()
             val cmdHandle = commandBuffer.vkCommandBuffer
             vkCmdBeginRenderPass(cmdHandle, renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE)
 
@@ -274,7 +282,6 @@ class GeometryRenderActivity(
             recordEntities(stack, cmdHandle, descriptorSets, vulkanModelList)
 
             vkCmdEndRenderPass(cmdHandle)
-            commandBuffer.endRecording()
         }
     }
 

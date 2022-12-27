@@ -26,7 +26,7 @@ class GeometryFrameBuffer(swapchain: SwapChain) {
             }
             attachmentsBuf.flip()
             return FrameBuffer(swapchain.device, geometryAttachments.width, geometryAttachments.height,
-                attachmentsBuf, geometryRenderPass.vkRenderPass)
+                attachmentsBuf, geometryRenderPass.vkRenderPass, 1)
         }
     }
 

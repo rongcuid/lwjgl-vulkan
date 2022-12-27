@@ -1,8 +1,9 @@
 package eng.graph.lighting
 
 import eng.EngineProperties
-import eng.graph.geometry.GeometryAttachments
+import eng.graph.shadows.CascadeShadow
 import eng.graph.vk.*
+import eng.graph.vk.DescriptorPool.DescriptorTypeCount
 import eng.scene.Light
 import eng.scene.Scene
 import org.joml.Matrix4f
@@ -10,11 +11,10 @@ import org.joml.Vector4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.shaderc.Shaderc
+import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK13.*
-import org.lwjgl.vulkan.VkClearValue
-import org.lwjgl.vulkan.VkRect2D
-import org.lwjgl.vulkan.VkRenderPassBeginInfo
-import org.lwjgl.vulkan.VkViewport
+
 
 class LightingRenderActivity(
     var swapChain: SwapChain, commandPool: CommandPool, val pipelineCache: PipelineCache,
@@ -34,10 +34,12 @@ class LightingRenderActivity(
     private lateinit var descriptorSetLayout: Array<DescriptorSetLayout>
     private lateinit var attachmentsLayout: AttachmentsLayout
     private lateinit var attachmentsDescriptorSet: AttachmentsDescriptorSet
-    private lateinit var invProjBuffer: VulkanBuffer
-    private lateinit var invProjMatrixDescriptorSet: DescriptorSet.UniformDescriptorSet
+    private lateinit var invMatricesBuffers: Array<VulkanBuffer>
+    private lateinit var invMatricesDescriptorSet: Array<DescriptorSet.UniformDescriptorSet>
     private lateinit var lightsBuffers: Array<VulkanBuffer>
-    private lateinit var lightsDescriptorSets: Array<DescriptorSet.UniformDescriptorSet>
+    private lateinit var lightsMatricesDescriptorSets: Array<DescriptorSet.UniformDescriptorSet>
+    private lateinit var shadowsMatricesBuffers: Array<VulkanBuffer>
+    private lateinit var shadowsMatricesDescriptorSets: Array<DescriptorSet.UniformDescriptorSet>
     private lateinit var uniformDescriptorSetLayout: DescriptorSetLayout.UniformDescriptorSetLayout
 
     init {
@@ -48,23 +50,29 @@ class LightingRenderActivity(
         createDescriptorSets(attachments, numImages)
         createPipeline(pipelineCache)
         createCommandBuffers(commandPool, numImages)
-        updateInvProjMatrix()
         for (i in 0 until numImages) {
             preRecordCommandBuffer(i)
         }
     }
 
     private fun createUniforms(numImages: Int) {
-        invProjBuffer = VulkanBuffer(
-            device, GraphConstants.MAT4X4_SIZE.toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
-        )
+        invMatricesBuffers = Array(numImages) {
+            VulkanBuffer(
+                device, GraphConstants.MAT4X4_SIZE.toLong() * 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
+            )
+        }
         lightsBuffers = Array(numImages) {
             VulkanBuffer(
                 device, (GraphConstants.INT_LENGTH * 4 +
                         GraphConstants.VEC4_SIZE * 2 * GraphConstants.MAX_LIGHTS + GraphConstants.VEC4_SIZE).toLong(),
                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
             )
+        }
+        shadowsMatricesBuffers = Array(numImages) {
+            VulkanBuffer(device,
+                ((GraphConstants.MAT4X4_SIZE + GraphConstants.VEC4_SIZE) * GraphConstants.SHADOW_MAP_CASCADE_COUNT).toLong(),
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0)
         }
     }
 
@@ -111,10 +119,11 @@ class LightingRenderActivity(
                 .offset { it.x(0).y(0) }
             vkCmdSetScissor(cmdHandle, 0, scissor)
 
-            val descriptorSets = stack.mallocLong(3)
+            val descriptorSets = stack.mallocLong(4)
                 .put(0, attachmentsDescriptorSet.vkDescriptorSet)
-                .put(1, lightsDescriptorSets[idx].vkDescriptorSet)
-                .put(2, invProjMatrixDescriptorSet.vkDescriptorSet)
+                .put(1, lightsMatricesDescriptorSets[idx].vkDescriptorSet)
+                .put(2, invMatricesDescriptorSet[idx].vkDescriptorSet)
+                .put(3, shadowsMatricesDescriptorSets[idx].vkDescriptorSet)
             vkCmdBindDescriptorSets(
                 cmdHandle, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipeline.vkPipelineLayout, 0, descriptorSets, null
@@ -149,26 +158,34 @@ class LightingRenderActivity(
             uniformDescriptorSetLayout
         )
         attachmentsDescriptorSet = AttachmentsDescriptorSet(descriptorPool, attachmentsLayout, attachments, 0)
-        invProjMatrixDescriptorSet = DescriptorSet.UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout,
-            invProjBuffer, 0)
-
-        lightsDescriptorSets = Array(numImages) {
+        invMatricesDescriptorSet = Array(numImages) {
+            DescriptorSet.UniformDescriptorSet(
+                descriptorPool, uniformDescriptorSetLayout,
+                shadowsMatricesBuffers[it], 0
+            )
+        }
+        lightsMatricesDescriptorSets = Array(numImages) {
             DescriptorSet.UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout,
                 lightsBuffers[it], 0)
+        }
+        shadowsMatricesDescriptorSets = Array(numImages) {
+            DescriptorSet.UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout,
+                shadowsMatricesBuffers[it], 0)
         }
     }
 
     private fun createDescriptorPool(attachments: List<Attachment>) {
-        val descriptorTypeCounts = ArrayList<DescriptorPool.DescriptorTypeCount>()
+        val descriptorTypeCounts = ArrayList<DescriptorTypeCount>()
         descriptorTypeCounts.add(
-            DescriptorPool.DescriptorTypeCount(
+            DescriptorTypeCount(
                 attachments.size,
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
             )
         )
         descriptorTypeCounts.add(
-            DescriptorPool.DescriptorTypeCount(swapChain.numImages + 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            DescriptorTypeCount(swapChain.numImages + 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         )
+        descriptorTypeCounts.add(DescriptorTypeCount(swapChain.numImages * 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER))
         descriptorPool = DescriptorPool(device, descriptorTypeCounts)
     }
 
@@ -197,21 +214,36 @@ class LightingRenderActivity(
         descriptorPool.cleanup()
         lightsBuffers.forEach { it.cleanup() }
         pipeline.cleanup()
-        invProjBuffer.cleanup()
+        invMatricesBuffers.forEach {it.cleanup()}
         lightingFrameBuffer.cleanup()
         lightSpecConstants.cleanup()
+        shadowsMatricesBuffers.forEach{it.cleanup()}
         shaderProgram.cleanup()
         commandBuffers.forEach(CommandBuffer::cleanup)
         fences.forEach(Fence::cleanup)
     }
 
-    fun prepareCommandBuffer() {
+    fun prepareCommandBuffer(cascadeShadows: List<CascadeShadow>) {
         val idx = swapChain.currentFrame
         val fence = fences[idx]
         fence.fenceWait()
         fence.reset()
 
         updateLights(scene.ambientLight, scene.lights, scene.camera.viewMatrix, lightsBuffers[idx])
+        updateInvMatrices(scene, invMatricesBuffers[idx])
+        updateCascadeShadowMatrices(cascadeShadows, shadowsMatricesBuffers[idx])
+    }
+
+    private fun updateCascadeShadowMatrices(cascadeShadows: List<CascadeShadow>, shadowsUniformBuffer: VulkanBuffer) {
+        val mappedMemory = shadowsUniformBuffer.map()
+        val buffer = MemoryUtil.memByteBuffer(mappedMemory, shadowsUniformBuffer.requestedSize.toInt())
+        var offset = 0
+        for (cascadeShadow in cascadeShadows) {
+            cascadeShadow.projViewMatrix.get(offset, buffer)
+            buffer.putFloat(offset + GraphConstants.MAT4X4_SIZE, cascadeShadow.splitDistance)
+            offset += GraphConstants.MAT4X4_SIZE + GraphConstants.VEC4_SIZE
+        }
+        shadowsUniformBuffer.unmap()
     }
 
     private fun updateLights(
@@ -246,17 +278,17 @@ class LightingRenderActivity(
         attachmentsDescriptorSet.update(attachments)
         lightingFrameBuffer.resize(swapChain)
 
-        updateInvProjMatrix()
-
         val numImages = swapChain.numImages
         for (i in 0 until numImages) {
             preRecordCommandBuffer(i)
         }
     }
 
-    private fun updateInvProjMatrix() {
+    private fun updateInvMatrices(scene: Scene, invMatricesBuffer: VulkanBuffer) {
         val invProj = Matrix4f(scene.projection.projectionMatrix).invert()
-        VulkanUtils.copyMatrixToBuffer(invProjBuffer, invProj)
+        val invView = Matrix4f(scene.camera.viewMatrix).invert()
+        VulkanUtils.copyMatrixToBuffer(invMatricesBuffer, invProj, 0)
+        VulkanUtils.copyMatrixToBuffer(invMatricesBuffer, invProj, GraphConstants.MAT4X4_SIZE)
     }
 
     fun submit(queue: Queue) {

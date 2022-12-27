@@ -17,6 +17,10 @@ class EngineProperties {
     var zNear: Float = DEFAULT_Z_NEAR
     var defaultTexturePath: String? = null
     var maxMaterials: Int = DEFAULT_MAX_MATERIALS
+    var shadowBias: Float = DEFAULT_SHADOW_BIAS
+    var shadowDebug: Boolean = false
+    var shadowMapSize: Int = DEFAULT_SHADOW_MAP_SIZE
+    var shadowPcf: Boolean = false
 
     init {
         val props = Properties()
@@ -34,6 +38,10 @@ class EngineProperties {
             zNear = props.getOrDefault("zNear", DEFAULT_Z_NEAR).toString().toFloat()
             defaultTexturePath = props.getProperty("defaultTexturePath")
             maxMaterials = props.getOrDefault("maxMaterials", DEFAULT_MAX_MATERIALS).toString().toInt()
+            shadowPcf = props.getOrDefault("shadowPcf", false).toString().toBoolean()
+            shadowBias = props.getOrDefault("shadowMapSize", DEFAULT_SHADOW_BIAS).toString().toFloat()
+            shadowMapSize = props.getOrDefault("shadowMapSize", DEFAULT_SHADOW_MAP_SIZE).toString().toInt()
+            shadowDebug = props.getOrDefault("shadowDebug", false).toString().toBoolean()
         } catch (e: IOException) {
             Logger.error("Could not read [{}] properties file", FILENAME, e)
         }
@@ -47,6 +55,8 @@ class EngineProperties {
         private const val DEFAULT_Z_FAR = 100f
         private const val DEFAULT_Z_NEAR = 1f
         private const val DEFAULT_MAX_MATERIALS = 500
+        private const val DEFAULT_SHADOW_BIAS = 0.00005f
+        private const val DEFAULT_SHADOW_MAP_SIZE = 2048
         val instance: EngineProperties = EngineProperties()
     }
 }

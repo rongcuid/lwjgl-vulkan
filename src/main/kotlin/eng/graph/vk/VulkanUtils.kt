@@ -34,7 +34,7 @@ class VulkanUtils {
             copyMatrixToBuffer(buffer, matrix, 0)
         }
 
-        private fun copyMatrixToBuffer(buffer: VulkanBuffer, matrix: Matrix4f, offset: Int) {
+        fun copyMatrixToBuffer(buffer: VulkanBuffer, matrix: Matrix4f, offset: Int) {
             val mappedMemory = buffer.map()
             val matrixBuffer = MemoryUtil.memByteBuffer(mappedMemory, buffer.requestedSize.toInt())
             matrix.get(offset, matrixBuffer)

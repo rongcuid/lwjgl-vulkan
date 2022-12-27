@@ -21,11 +21,12 @@ class LightingFrameBuffer(swapChain: SwapChain) {
             val extent2D = swapChain.swapChainExtent
             val width = extent2D.width()
             val height = extent2D.height()
+
             val numImages = swapChain.numImages
             val attachmentsBuf = stack.mallocLong(1)
             return Array(numImages) {
                 attachmentsBuf.put(0, swapChain.imageViews[it].vkImageView)
-                FrameBuffer(swapChain.device, width, height, attachmentsBuf, lightingRenderPass.vkRenderPass)
+                FrameBuffer(swapChain.device, width, height, attachmentsBuf, lightingRenderPass.vkRenderPass, 1)
             }
         }
     }

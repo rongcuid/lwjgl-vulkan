@@ -4,6 +4,7 @@ import eng.EngineProperties
 import eng.Window
 import eng.graph.geometry.GeometryRenderActivity
 import eng.graph.lighting.LightingRenderActivity
+import eng.graph.shadows.ShadowRenderActivity
 import eng.graph.vk.*
 import eng.scene.ModelData
 import eng.scene.Scene
@@ -21,6 +22,7 @@ class Render(window: Window, scene: Scene) {
     val presentQueue: Queue.PresentQueue
     val geometryRenderActivity: GeometryRenderActivity
     val lightingRenderActivity: LightingRenderActivity
+    val shadowRenderActivity: ShadowRenderActivity
     val vulkanModels: MutableList<VulkanModel>
     val textureCache: TextureCache
     init {
@@ -37,6 +39,7 @@ class Render(window: Window, scene: Scene) {
         geometryRenderActivity = GeometryRenderActivity(swapChain, commandPool, pipelineCache, scene)
         lightingRenderActivity = LightingRenderActivity(swapChain, commandPool, pipelineCache,
             geometryRenderActivity.attachments, scene)
+        shadowRenderActivity = ShadowRenderActivity(swapChain, pipelineCache, scene)
         vulkanModels = ArrayList()
         textureCache = TextureCache()
     }
@@ -66,9 +69,12 @@ class Render(window: Window, scene: Scene) {
             scene.projection.resize(window.width, window.height)
             swapChain.acquireNextImage()
         }
-        geometryRenderActivity.recordCommandBuffer(vulkanModels)
+        val commandBuffer = geometryRenderActivity.beginRecording()
+        geometryRenderActivity.recordCommandBuffer(commandBuffer, vulkanModels)
+        shadowRenderActivity.recordCommandBuffer(commandBuffer, vulkanModels)
+        geometryRenderActivity.endRecording(commandBuffer)
         geometryRenderActivity.submit(presentQueue)
-        lightingRenderActivity.prepareCommandBuffer()
+        lightingRenderActivity.prepareCommandBuffer(shadowRenderActivity.cascadeShadows)
         lightingRenderActivity.submit(graphQueue)
         if (swapChain.presentImage(graphQueue)) {
             window.resized = true
@@ -100,6 +106,10 @@ class Render(window: Window, scene: Scene) {
         swapChain.cleanup()
         swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
         geometryRenderActivity.resize(swapChain)
-        lightingRenderActivity.resize(swapChain, geometryRenderActivity.attachments)
+        shadowRenderActivity.resize(swapChain)
+        val attachments = ArrayList<Attachment>()
+        attachments.addAll(geometryRenderActivity.attachments)
+        attachments.add(shadowRenderActivity.depthAttachment)
+        lightingRenderActivity.resize(swapChain, attachments)
     }
 }

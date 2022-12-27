@@ -36,6 +36,8 @@ class Engine(windowTitle: String, appLogic: IAppLogic) {
         while(running && !window.shouldClose()) {
             window.pollEvents()
 
+            scene.camera.hasMoved = false
+
             val currentTime = System.nanoTime()
             deltaU += (currentTime - initialTime) / timeU
             if (deltaU >= 1) {

@@ -14,7 +14,7 @@ class Main : IAppLogic {
 
     var angleInc = 0f
     var directionalLight = Light()
-    var lightAngle = 0f
+    var lightAngle = 90.1f
     override fun cleanup() {
         // TODO
     }
@@ -39,10 +39,13 @@ class Main : IAppLogic {
         }
         if (window.isKeyPressed(GLFW_KEY_LEFT)) {
             angleInc -= 0.05f
+            scene.lightChanged = true
         } else if (window.isKeyPressed(GLFW_KEY_RIGHT)) {
             angleInc += 0.05f
+            scene.lightChanged = true
         } else {
             angleInc = 0f
+            scene.lightChanged = false
         }
 
         val mouseInput: MouseInput = window.mouseInput

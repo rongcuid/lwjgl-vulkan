@@ -23,6 +23,8 @@ class Device(instance: Instance, physicalDevice: PhysicalDevice) {
             val supportedFeatures = physicalDevice.vkPhysicalDeviceFeatures
             samplerAnisotropy = supportedFeatures.samplerAnisotropy()
             features.samplerAnisotropy(samplerAnisotropy)
+            features.depthClamp(supportedFeatures.depthClamp())
+            features.geometryShader(true)
             // Enable all queue families
             val queuePropsBuff = physicalDevice.vkQueueFamilyProps
             val numQueueFamilies = queuePropsBuff.capacity()

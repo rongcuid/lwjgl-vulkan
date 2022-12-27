@@ -6,7 +6,7 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.nio.LongBuffer
 
-class FrameBuffer(device: Device, width: Int, height: Int, pAttachments: LongBuffer, renderPass: Long) {
+class FrameBuffer(device: Device, width: Int, height: Int, pAttachments: LongBuffer, renderPass: Long, layers: Int) {
     val device: Device
     val vkFrameBuffer: Long
 
@@ -18,7 +18,7 @@ class FrameBuffer(device: Device, width: Int, height: Int, pAttachments: LongBuf
                 .pAttachments(pAttachments)
                 .width(width)
                 .height(height)
-                .layers(1)
+                .layers(layers)
                 .renderPass(renderPass)
             val lp = stack.mallocLong(1)
             vkCheck(vkCreateFramebuffer(device.vkDevice, fci, null, lp),
