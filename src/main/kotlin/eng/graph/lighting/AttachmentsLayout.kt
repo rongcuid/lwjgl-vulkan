@@ -1,5 +1,8 @@
-package eng.graph.vk
+package eng.graph.lighting
 
+import eng.graph.vk.DescriptorSetLayout
+import eng.graph.vk.Device
+import eng.graph.vk.VulkanUtils
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding

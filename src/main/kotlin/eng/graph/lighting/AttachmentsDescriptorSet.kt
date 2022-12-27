@@ -1,5 +1,6 @@
-package eng.graph.vk
+package eng.graph.lighting
 
+import eng.graph.vk.*
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*

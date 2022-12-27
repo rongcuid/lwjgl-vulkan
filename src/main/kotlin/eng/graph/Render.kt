@@ -36,7 +36,7 @@ class Render(window: Window, scene: Scene) {
         pipelineCache = PipelineCache(device)
         geometryRenderActivity = GeometryRenderActivity(swapChain, commandPool, pipelineCache, scene)
         lightingRenderActivity = LightingRenderActivity(swapChain, commandPool, pipelineCache,
-            geometryRenderActivity.attachments)
+            geometryRenderActivity.attachments, scene)
         vulkanModels = ArrayList()
         textureCache = TextureCache()
     }

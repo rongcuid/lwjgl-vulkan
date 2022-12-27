@@ -19,12 +19,12 @@ class VulkanBuffer(device: Device, size: Long, usage: Int, reqMask: Int) {
 
     init {
         this.device = device
-        requestedSize = size
+        requestedSize = size.toLong()
         mappedMemory = MemoryUtil.NULL
         MemoryStack.stackPush().use { stack ->
             val bufferCreateInfo = VkBufferCreateInfo.calloc(stack)
                 .`sType$Default`()
-                .size(size)
+                .size(size.toLong())
                 .usage(usage)
                 .sharingMode(VK_SHARING_MODE_EXCLUSIVE)
             val lp = stack.mallocLong(1)

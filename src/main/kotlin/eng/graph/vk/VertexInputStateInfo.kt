@@ -26,35 +26,35 @@ class VertexBufferStructure : VertexInputStateInfo() {
         // Position
         viAttrs[i]
             .binding(0)
-            .location(0)
+            .location(i)
             .format(VK_FORMAT_R32G32B32_SFLOAT)
             .offset(0)
         i++
         // Normal
         viAttrs[i]
             .binding(0)
-            .location(0)
+            .location(i)
             .format(VK_FORMAT_R32G32B32_SFLOAT)
             .offset(POSITION_COMPONENTS * GraphConstants.FLOAT_LENGTH)
         i++
         // Tangent
         viAttrs[i]
             .binding(0)
-            .location(0)
+            .location(i)
             .format(VK_FORMAT_R32G32B32_SFLOAT)
             .offset((NORMAL_COMPONENTS + POSITION_COMPONENTS) * GraphConstants.FLOAT_LENGTH)
         i++
         // Bitangent
         viAttrs[i]
             .binding(0)
-            .location(0)
+            .location(i)
             .format(VK_FORMAT_R32G32B32_SFLOAT)
             .offset((POSITION_COMPONENTS + NORMAL_COMPONENTS * 2) * GraphConstants.FLOAT_LENGTH)
         i++
         // Texture coordinates
         viAttrs[i]
             .binding(0)
-            .location(1)
+            .location(i)
             .format(VK_FORMAT_R32G32_SFLOAT)
             .offset((NORMAL_COMPONENTS * 3 + POSITION_COMPONENTS) * GraphConstants.FLOAT_LENGTH)
         viBindings[0]
