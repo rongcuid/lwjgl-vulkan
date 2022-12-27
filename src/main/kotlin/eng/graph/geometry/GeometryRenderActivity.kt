@@ -93,7 +93,7 @@ class GeometryRenderActivity(
         textureSampler = TextureSampler(device, 1)
         projMatrixUniform = VulkanBuffer(
             device, GraphConstants.MAT4X4_SIZE.toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
         )
         projMatrixDescriptorSet =
             UniformDescriptorSet(descriptorPool, uniformDescriptorSetLayout, projMatrixUniform, 0)
@@ -101,7 +101,7 @@ class GeometryRenderActivity(
         viewMatricesBuffer = Array(numImages) {
             VulkanBuffer(
                 device, GraphConstants.MAT4X4_SIZE.toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
             )
         }
         viewMatricesDescriptorSets = Array(numImages) {
@@ -110,7 +110,7 @@ class GeometryRenderActivity(
         materialsBuffer = VulkanBuffer(
             device,
             (materialSize * engineProps.maxMaterials).toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
         )
         materialsDescriptorSet = DescriptorSet.DynUniformDescriptorSet(
             descriptorPool, materialDescriptorSetLayout,

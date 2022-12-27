@@ -6,9 +6,10 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import org.tinylog.kotlin.Logger
 
-class Device(physicalDevice: PhysicalDevice) {
+class Device(instance: Instance, physicalDevice: PhysicalDevice) {
     val physicalDevice: PhysicalDevice
     val vkDevice: VkDevice
+    val memoryAllocator: MemoryAllocator
     val samplerAnisotropy: Boolean
     init {
         Logger.debug("Creating device")
@@ -42,11 +43,13 @@ class Device(physicalDevice: PhysicalDevice) {
             vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, deviceCreateInfo, null, pp),
                 "Failed to create device")
             vkDevice = VkDevice(pp.get(0), physicalDevice.vkPhysicalDevice, deviceCreateInfo)
+            memoryAllocator = MemoryAllocator(instance, physicalDevice, vkDevice)
         }
     }
 
     fun cleanup() {
         Logger.debug("Destroying Vulkan device")
+        memoryAllocator.cleanup()
         vkDestroyDevice(vkDevice, null)
     }
 

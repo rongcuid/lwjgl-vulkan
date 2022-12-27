@@ -56,13 +56,13 @@ class LightingRenderActivity(
     private fun createUniforms(numImages: Int) {
         invProjBuffer = VulkanBuffer(
             device, GraphConstants.MAT4X4_SIZE.toLong(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
         )
         lightsBuffers = Array(numImages) {
             VulkanBuffer(
                 device, (GraphConstants.INT_LENGTH * 4 +
                         GraphConstants.VEC4_SIZE * 2 * GraphConstants.MAX_LIGHTS + GraphConstants.VEC4_SIZE).toLong(),
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, 0
             )
         }
     }

@@ -27,7 +27,7 @@ class Render(window: Window, scene: Scene) {
         val engProps = EngineProperties.instance
         instance = Instance(engProps.validate)
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, engProps.physDeviceName)
-        device = Device(physicalDevice)
+        device = Device(instance, physicalDevice)
         surface = Surface(physicalDevice, window.windowHandle)
         graphQueue = Queue.GraphicsQueue(device, 0)
         presentQueue = Queue.PresentQueue(device, surface, 0)

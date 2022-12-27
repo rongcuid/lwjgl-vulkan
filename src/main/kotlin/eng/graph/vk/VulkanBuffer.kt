@@ -1,61 +1,54 @@
 package eng.graph.vk
 
-import eng.graph.vk.VulkanUtils.Companion.memoryTypeFromProperties
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.util.vma.Vma.*
+import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 
-class VulkanBuffer(device: Device, size: Long, usage: Int, reqMask: Int) {
-    val device: Device
-    val requestedSize: Long
-    val allocationSize: Long
-    var mappedMemory: Long
+class VulkanBuffer(device: Device, size: Long, bufferUsage: Int, memoryUsage: Int, requiredFlags: Int) {
+    val allocation: Long
     val buffer: Long
-    val memory: Long
+    val device: Device
     val pb: PointerBuffer
+    val requestedSize: Long
 
+    var mappedMemory: Long
     init {
         this.device = device
-        requestedSize = size.toLong()
+        requestedSize = size
         mappedMemory = MemoryUtil.NULL
         MemoryStack.stackPush().use { stack ->
             val bufferCreateInfo = VkBufferCreateInfo.calloc(stack)
                 .`sType$Default`()
-                .size(size.toLong())
-                .usage(usage)
+                .size(size)
+                .usage(bufferUsage)
                 .sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+            val allocInfo = VmaAllocationCreateInfo.calloc(stack)
+                .requiredFlags(requiredFlags)
+                .usage(memoryUsage)
+            val pAllocation = stack.callocPointer(1)
             val lp = stack.mallocLong(1)
-            vkCheck(vkCreateBuffer(device.vkDevice, bufferCreateInfo, null, lp),
+            vkCheck(vmaCreateBuffer(device.memoryAllocator.vmaAllocator, bufferCreateInfo, allocInfo, lp,
+                pAllocation, null),
                 "Failed to create buffer")
             buffer = lp[0]
-            var memReqs = VkMemoryRequirements.malloc(stack)
-            vkGetBufferMemoryRequirements(device.vkDevice, buffer, memReqs)
-            val memAlloc = VkMemoryAllocateInfo.calloc(stack)
-                .`sType$Default`()
-                .allocationSize(memReqs.size())
-                .memoryTypeIndex(memoryTypeFromProperties(device.physicalDevice,
-                    memReqs.memoryTypeBits(), reqMask))
-            vkCheck(vkAllocateMemory(device.vkDevice, memAlloc, null, lp),
-                "Failed to allocate memory")
-            allocationSize = memAlloc.allocationSize()
-            memory = lp[0]
-            pb = MemoryUtil.memAllocPointer(1)
-            vkCheck(vkBindBufferMemory(device.vkDevice, buffer, memory, 0),
-                "Failed to bind buffer memory")
+            allocation = pAllocation[0]
+            pb = PointerBuffer.allocateDirect(1)
         }
     }
     fun cleanup() {
-        MemoryUtil.memFree(pb)
-        vkDestroyBuffer(device.vkDevice, buffer, null)
-        vkFreeMemory(device.vkDevice, memory, null)
+        pb.free()
+        unmap()
+        vmaDestroyBuffer(device.memoryAllocator.vmaAllocator, buffer, allocation)
     }
 
     fun map(): Long {
         if (mappedMemory == MemoryUtil.NULL) {
-            vkCheck(vkMapMemory(device.vkDevice, memory, 0, allocationSize, 0, pb),
+            vkCheck(vmaMapMemory(device.memoryAllocator.vmaAllocator, allocation, pb),
                 "Failed to map buffer")
             mappedMemory = pb[0]
         }
@@ -63,7 +56,7 @@ class VulkanBuffer(device: Device, size: Long, usage: Int, reqMask: Int) {
     }
     fun unmap() {
         if (mappedMemory != MemoryUtil.NULL) {
-            vkUnmapMemory(device.vkDevice, memory)
+            vmaUnmapMemory(device.memoryAllocator.vmaAllocator, allocation)
             mappedMemory = MemoryUtil.NULL
         }
     }

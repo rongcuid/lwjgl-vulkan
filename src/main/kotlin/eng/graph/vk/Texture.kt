@@ -55,7 +55,7 @@ class Texture(device: Device, val fileName: String, imageFormat: Int) {
         val size = data.remaining()
         val stgBuffer = VulkanBuffer(
             device, size.toLong(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         )
         val mappedMemory = stgBuffer.map()
         val buffer = MemoryUtil.memByteBuffer(mappedMemory, stgBuffer.requestedSize.toInt())
