@@ -1,10 +1,10 @@
 package eng.graph.vk
 
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
-import org.lwjgl.*
-import org.lwjgl.system.*
-import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK13.vkCreateShaderModule
+import org.lwjgl.vulkan.VK13.vkDestroyShaderModule
+import org.lwjgl.vulkan.VkShaderModuleCreateInfo
 import org.tinylog.kotlin.Logger
 import java.io.File
 import java.io.IOException
@@ -20,7 +20,7 @@ class ShaderProgram(device: Device, shaderModuleData: Array<ShaderModuleData>?) 
             shaderModules = Array(numModules) {
                 val moduleContents = Files.readAllBytes(File(shaderModuleData!![it].shaderSpvFile).toPath())
                 val moduleHandle = createShaderModule(moduleContents)
-                ShaderModule(shaderModuleData!![it].shaderStage, moduleHandle)
+                ShaderModule(shaderModuleData[it].shaderStage, moduleHandle)
             }
         } catch (e: IOException) {
             Logger.error("Error reading shader files", e)

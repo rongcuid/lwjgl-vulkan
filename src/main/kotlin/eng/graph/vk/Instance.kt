@@ -91,7 +91,7 @@ class Instance(val validate: Boolean) {
             .`sType$Default`()
             .messageSeverity(MESSAGE_SEVERITY_BITMASK)
             .messageType(MESSAGE_TYPE_BITMASK)
-            .pfnUserCallback() { messageSeverity, messageTypes, pCallbackData, pUserData ->
+            .pfnUserCallback { messageSeverity, messageTypes, pCallbackData, pUserData ->
                 val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
                 if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
                     Logger.info("VkDebugUtilsCallback, {}", callbackData.pMessageString())

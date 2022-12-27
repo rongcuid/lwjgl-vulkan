@@ -21,7 +21,7 @@ class ImageView(device: Device, vkImage: Long, imageViewData: ImageViewData) {
                 .image(vkImage)
                 .viewType(imageViewData.viewType)
                 .format(imageViewData.format)
-                .subresourceRange() {
+                .subresourceRange {
                     it.aspectMask(aspectMask)
                         .baseMipLevel(0)
                         .levelCount(mipLevels)

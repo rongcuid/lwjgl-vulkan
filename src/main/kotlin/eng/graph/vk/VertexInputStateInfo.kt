@@ -1,9 +1,9 @@
 package eng.graph.vk
-import eng.graph.vk.VulkanUtils.Companion.vkCheck
-import org.lwjgl.PointerBuffer
-import org.lwjgl.system.*
-import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
+import org.lwjgl.vulkan.VkVertexInputAttributeDescription
+import org.lwjgl.vulkan.VkVertexInputBindingDescription
+
 abstract class VertexInputStateInfo {
     abstract val vi: VkPipelineVertexInputStateCreateInfo
 
@@ -52,5 +52,14 @@ class VertexBufferStructure : VertexInputStateInfo() {
         const val NUMBER_OF_ATTRIBUTES = 2
         const val POSITION_COMPONENTS = 3
         const val TEXT_COORD_COMPONENTS = 2
+    }
+}
+
+class EmptyVertexBufferStructure : VertexInputStateInfo() {
+    override val vi: VkPipelineVertexInputStateCreateInfo = VkPipelineVertexInputStateCreateInfo.calloc()
+    init {
+        vi.`sType$Default`()
+            .pVertexBindingDescriptions(null)
+            .pVertexBindingDescriptions(null)
     }
 }

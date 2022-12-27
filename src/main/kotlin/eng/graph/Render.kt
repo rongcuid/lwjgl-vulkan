@@ -2,13 +2,12 @@ package eng.graph
 
 import eng.EngineProperties
 import eng.Window
+import eng.graph.geometry.GeometryRenderActivity
+import eng.graph.lighting.LightingRenderActivity
 import eng.graph.vk.*
-import eng.graph.vk.Queue
 import eng.scene.ModelData
 import eng.scene.Scene
 import org.tinylog.kotlin.Logger
-import java.util.*
-import kotlin.collections.ArrayList
 
 class Render(window: Window, scene: Scene) {
     val instance: Instance
@@ -20,7 +19,8 @@ class Render(window: Window, scene: Scene) {
     var swapChain: SwapChain
     val commandPool: CommandPool
     val presentQueue: Queue.PresentQueue
-    val fwdRenderActivity: ForwardRenderActivity
+    val geometryRenderActivity: GeometryRenderActivity
+    val lightingRenderActivity: LightingRenderActivity
     val vulkanModels: MutableList<VulkanModel>
     val textureCache: TextureCache
     init {
@@ -34,7 +34,9 @@ class Render(window: Window, scene: Scene) {
         swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
         commandPool = CommandPool(device, graphQueue.queueFamilyIndex)
         pipelineCache = PipelineCache(device)
-        fwdRenderActivity = ForwardRenderActivity(swapChain, commandPool, pipelineCache, scene)
+        geometryRenderActivity = GeometryRenderActivity(swapChain, commandPool, pipelineCache, scene)
+        lightingRenderActivity = LightingRenderActivity(swapChain, commandPool, pipelineCache,
+            geometryRenderActivity.attachments)
         vulkanModels = ArrayList()
         textureCache = TextureCache()
     }
@@ -42,7 +44,8 @@ class Render(window: Window, scene: Scene) {
     fun cleanup() {
         textureCache.cleanup()
         presentQueue.waitIdle()
-        fwdRenderActivity.cleanup()
+        lightingRenderActivity.cleanup()
+        geometryRenderActivity.cleanup()
         commandPool.cleanup()
         vulkanModels.forEach(VulkanModel::cleanup)
         pipelineCache.cleanup()
@@ -63,8 +66,10 @@ class Render(window: Window, scene: Scene) {
             scene.projection.resize(window.width, window.height)
             swapChain.acquireNextImage()
         }
-        fwdRenderActivity.recordCommandBuffer(vulkanModels)
-        fwdRenderActivity.submit(presentQueue)
+        geometryRenderActivity.recordCommandBuffer(vulkanModels)
+        geometryRenderActivity.submit(presentQueue)
+        lightingRenderActivity.prepareCommandBuffer()
+        lightingRenderActivity.submit(graphQueue)
         if (swapChain.presentImage(graphQueue)) {
             window.resized = true
         }
@@ -86,7 +91,7 @@ class Render(window: Window, scene: Scene) {
             aHasTransparentMt.compareTo(bHasTransparentMt)
         }
 
-        fwdRenderActivity.registerModels(vulkanModels)
+        geometryRenderActivity.registerModels(vulkanModels)
     }
     fun resize(window: Window) {
         val engProps = EngineProperties.instance
@@ -94,6 +99,7 @@ class Render(window: Window, scene: Scene) {
         graphQueue.waitIdle()
         swapChain.cleanup()
         swapChain = SwapChain(device, surface, window, engProps.requestedImages, engProps.vSync)
-        fwdRenderActivity.resize(swapChain)
+        geometryRenderActivity.resize(swapChain)
+        lightingRenderActivity.resize(swapChain, geometryRenderActivity.attachments)
     }
 }

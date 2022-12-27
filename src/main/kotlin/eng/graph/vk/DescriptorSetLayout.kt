@@ -1,9 +1,10 @@
 package eng.graph.vk
 
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
-import org.lwjgl.system.*
-import org.lwjgl.vulkan.*
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding
+import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo
 import org.tinylog.kotlin.Logger
 
 abstract class DescriptorSetLayout(private val device: Device) {
@@ -45,4 +46,5 @@ abstract class DescriptorSetLayout(private val device: Device) {
             SimpleDescriptorSetLayout(device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, binding, stage)
     class DynUniformDescriptorSetLayout(device: Device, binding: Int, stage: Int) :
             SimpleDescriptorSetLayout(device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, binding, stage)
+
 }
