@@ -99,7 +99,7 @@ class VulkanModel(val modelId: String) {
             val hasTexture = material.texturePath != null && material.texturePath.trim().isNotEmpty()
             val normalMapTexture = textureCache.createTexture(device, material.normalMapPath, VK_FORMAT_R8G8B8A8_UNORM)
             val hasNormalMapTexture = !material.normalMapPath.isNullOrEmpty()
-            val metalRoughTexture = textureCache.createTexture(device, material.metalRoughMap, VK_FORMAT_R8G8B8A8_SRGB)
+            val metalRoughTexture = textureCache.createTexture(device, material.metalRoughMap, VK_FORMAT_R8G8B8A8_UNORM)
             val hasMetalRoughTexture = !material.metalRoughMap.isNullOrEmpty()
 
             texture.recordTextureTransition(cmd)

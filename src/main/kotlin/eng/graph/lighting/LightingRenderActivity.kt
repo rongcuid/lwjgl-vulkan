@@ -28,6 +28,7 @@ class LightingRenderActivity(
 
     private lateinit var commandBuffers: Array<CommandBuffer>
     private lateinit var shaderProgram: ShaderProgram
+    private var lightSpecConstants = LightSpecConstants()
     private lateinit var fences: Array<Fence>
     private lateinit var descriptorPool: DescriptorPool
     private lateinit var descriptorSetLayout: Array<DescriptorSetLayout>
@@ -183,7 +184,8 @@ class LightingRenderActivity(
         shaderProgram = ShaderProgram(
             device, arrayOf(
                 ShaderProgram.ShaderModuleData(VK_SHADER_STAGE_VERTEX_BIT, LIGHTING_VERTEX_SHADER_FILE_SPV),
-                ShaderProgram.ShaderModuleData(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHTING_FRAGMENT_SHADER_FILE_SPV)
+                ShaderProgram.ShaderModuleData(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHTING_FRAGMENT_SHADER_FILE_SPV,
+                    lightSpecConstants.specInfo)
             )
         )
     }
@@ -197,6 +199,7 @@ class LightingRenderActivity(
         pipeline.cleanup()
         invProjBuffer.cleanup()
         lightingFrameBuffer.cleanup()
+        lightSpecConstants.cleanup()
         shaderProgram.cleanup()
         commandBuffers.forEach(CommandBuffer::cleanup)
         fences.forEach(Fence::cleanup)

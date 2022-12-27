@@ -22,11 +22,15 @@ class Pipeline(pipelineCache: PipelineCache, pipeLineCreationInfo: PipelineCreat
             val numModules = shaderModules.size
             val shaderStages = VkPipelineShaderStageCreateInfo.calloc(numModules, stack)
             for (i in 0 until numModules) {
+                val shaderModule = shaderModules[i]
                 shaderStages[i]
                     .`sType$Default`()
                     .stage(shaderModules[i].shaderStage)
                     .module(shaderModules[i].handle)
                     .pName(main)
+                if (shaderModule.specInfo != null) {
+                    shaderStages[i].pSpecializationInfo(shaderModule.specInfo)
+                }
             }
             val vkPipelineInputAssemblyStateCreateInfo = VkPipelineInputAssemblyStateCreateInfo.calloc(stack)
                 .`sType$Default`()

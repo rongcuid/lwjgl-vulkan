@@ -5,6 +5,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.vkCreateShaderModule
 import org.lwjgl.vulkan.VK13.vkDestroyShaderModule
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo
+import org.lwjgl.vulkan.VkSpecializationInfo
 import org.tinylog.kotlin.Logger
 import java.io.File
 import java.io.IOException
@@ -20,7 +21,7 @@ class ShaderProgram(device: Device, shaderModuleData: Array<ShaderModuleData>?) 
             shaderModules = Array(numModules) {
                 val moduleContents = Files.readAllBytes(File(shaderModuleData!![it].shaderSpvFile).toPath())
                 val moduleHandle = createShaderModule(moduleContents)
-                ShaderModule(shaderModuleData[it].shaderStage, moduleHandle)
+                ShaderModule(shaderModuleData[it].shaderStage, moduleHandle, shaderModuleData[it].specInfo)
             }
         } catch (e: IOException) {
             Logger.error("Error reading shader files", e)
@@ -46,6 +47,6 @@ class ShaderProgram(device: Device, shaderModuleData: Array<ShaderModuleData>?) 
         }
     }
 
-    data class ShaderModule(val shaderStage: Int, val handle: Long)
-    data class ShaderModuleData(val shaderStage: Int, val shaderSpvFile: String)
+    data class ShaderModule(val shaderStage: Int, val handle: Long, val specInfo: VkSpecializationInfo?)
+    data class ShaderModuleData(val shaderStage: Int, val shaderSpvFile: String, val specInfo: VkSpecializationInfo?=null)
 }

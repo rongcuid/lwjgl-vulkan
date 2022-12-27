@@ -3,7 +3,7 @@
 // developed by Joey de Vries, https://twitter.com/JoeyDeVriez, and licensed under the terms of the CC BY-NC 4.0,
 // https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
-const int MAX_LIGHTS = 10;
+layout (constant_id = 0) const int MAX_LIGHTS = 10;
 const float PI = 3.14159265359;
 
 // color cannot be vec3 due to std140 in GLSL
