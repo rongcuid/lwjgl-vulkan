@@ -139,7 +139,7 @@ class LightingRenderActivity(
     }
 
     private fun createDescriptorSets(attachments: List<Attachment>, numImages: Int) {
-        attachmentsLayout = AttachmentsLayout(device, GeometryAttachments.NUMBER_ATTACHMENTS)
+        attachmentsLayout = AttachmentsLayout(device, attachments.size)
         uniformDescriptorSetLayout = DescriptorSetLayout.UniformDescriptorSetLayout(device, 0,
             VK_SHADER_STAGE_FRAGMENT_BIT)
         descriptorSetLayout = arrayOf(

@@ -13,7 +13,7 @@ class AttachmentsLayout(device: Device, numAttachments: Int) :
     DescriptorSetLayout(device) {
     override val vkDescriptorLayout: Long
     init {
-        Logger.debug("Creating AttachmentsLayout")
+        Logger.debug("Creating AttachmentsLayout with [{}] attachments", numAttachments)
         MemoryStack.stackPush().use { stack ->
             val layoutBindings = VkDescriptorSetLayoutBinding.calloc(numAttachments, stack)
             for (i in 0 until numAttachments) {

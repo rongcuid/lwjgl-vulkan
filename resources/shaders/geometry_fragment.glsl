@@ -1,6 +1,5 @@
 #version 450
 
-
 layout(location = 0) in vec3 inNormal;
 layout(location = 1) in vec3 inTangent;
 layout(location = 2) in vec3 inBitangent;
@@ -16,15 +15,18 @@ layout(set = 4, binding = 0) uniform sampler2D metRoughSampler;
 
 layout(set = 5, binding = 0) uniform MaterialUniform {
     vec4 diffuseColor;
+    float hasTexture;
     float hasNormalMap;
     float hasMetalRoughMap;
     float roughnessFactor;
     float metallicFactor;
 } material;
 
-vec3 calcNormal(float hasNormalMap, vec3 normal, vec2 textCoords, mat3 TBN) {
+vec3 calcNormal(float hasNormalMap, vec3 normal, vec2 textCoords, mat3 TBN)
+{
     vec3 newNormal = normal;
-    if (hasNormalMap > 0) {
+    if (hasNormalMap > 0)
+    {
         newNormal = texture(normalSampler, textCoords).rgb;
         newNormal = normalize(newNormal * 2.0 - 1.0);
         newNormal = normalize(TBN * newNormal);
@@ -34,8 +36,13 @@ vec3 calcNormal(float hasNormalMap, vec3 normal, vec2 textCoords, mat3 TBN) {
 
 void main()
 {
-    outAlbedo = material.diffuseColor + texture(textSampler, inTextCoords);
-    // HACK avoid transparent PBR artifacts
+    if (material.hasTexture > 0) {
+        outAlbedo = texture(textSampler, inTextCoords);
+    } else {
+        outAlbedo = material.diffuseColor;
+    }
+
+    // Hack to avoid transparent PBR artifacts
     if (outAlbedo.a < 0.5) {
         discard;
     }
