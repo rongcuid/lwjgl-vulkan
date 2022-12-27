@@ -92,6 +92,7 @@ class Main : IAppLogic {
         val light = Light()
         light.position.set(0f, 1f, 0f, 1f)
         light.color.set(0f, 1f, 0f, 1f)
+        lights.add(light)
 
         val lightArr = lights.toTypedArray()
         scene.lights = lightArr
