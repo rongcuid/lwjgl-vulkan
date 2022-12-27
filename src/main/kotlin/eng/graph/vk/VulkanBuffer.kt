@@ -37,11 +37,11 @@ class VulkanBuffer(device: Device, size: Long, bufferUsage: Int, memoryUsage: In
                 "Failed to create buffer")
             buffer = lp[0]
             allocation = pAllocation[0]
-            pb = PointerBuffer.allocateDirect(1)
+            pb = MemoryUtil.memAllocPointer(1)
         }
     }
     fun cleanup() {
-        pb.free()
+        MemoryUtil.memFree(pb)
         unmap()
         vmaDestroyBuffer(device.memoryAllocator.vmaAllocator, buffer, allocation)
     }
