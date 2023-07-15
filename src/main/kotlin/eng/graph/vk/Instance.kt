@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.EXTDebugUtils.*
 import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
+import java.nio.ByteBuffer
 
 class Instance(val validate: Boolean) {
     val vkInstance: VkInstance
@@ -26,6 +27,7 @@ class Instance(val validate: Boolean) {
                 .pEngineName(appShortName)
                 .engineVersion(0)
                 .apiVersion(VK_API_VERSION_1_2)
+            val portability = checkPortabilitySubset()
             val validationLayers = getSupportedValidationLayers()
             val numValidationLayers = validationLayers.size
             var supportsValidation = validate
@@ -77,12 +79,41 @@ class Instance(val validate: Boolean) {
             // Instantiate debug extension
             vkDebugHandle = if (supportsValidation) {
                 val longBuff = stack.mallocLong(1)
-                vkCheck(vkCreateDebugUtilsMessengerEXT(vkInstance, debugUtils!!, null, longBuff), "Error creating debug utils")
+                vkCheck(
+                    vkCreateDebugUtilsMessengerEXT(vkInstance, debugUtils!!, null, longBuff),
+                    "Error creating debug utils"
+                )
                 longBuff.get(0)
             } else {
                 VK_NULL_HANDLE
             }
         }
+    }
+
+    private fun checkPortabilitySubset(): Boolean {
+        MemoryStack.stackPush().use { stack ->
+            val ip = stack.mallocInt(1)
+            vkCheck(
+                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, null),
+                "Error enumerating number of instance extensions"
+            )
+            val nExtensions = ip.get(0)
+            Logger.debug("Instance supports [{}] extensions", nExtensions)
+            val properties = VkExtensionProperties.calloc(nExtensions, stack)
+            vkCheck(
+                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, properties),
+                "Error enumerating instance extensions"
+            )
+            for (i in 0 until nExtensions) {
+                val prop = properties.get(i)
+                val name = prop.extensionNameString()
+                Logger.debug("Found extension [{}]", name)
+                if (name == "VK_KHR_portability_enumeration") {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun createDebugCallback(): VkDebugUtilsMessengerCreateInfoEXT {
