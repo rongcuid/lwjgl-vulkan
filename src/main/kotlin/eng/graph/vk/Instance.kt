@@ -9,6 +9,7 @@ import org.lwjgl.vulkan.EXTDebugUtils.*
 import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
+import org.lwjgl.vulkan.KHRPortabilityEnumeration.*
 import java.nio.ByteBuffer
 
 class Instance(val validate: Boolean) {
@@ -27,7 +28,6 @@ class Instance(val validate: Boolean) {
                 .pEngineName(appShortName)
                 .engineVersion(0)
                 .apiVersion(VK_API_VERSION_1_2)
-            val portability = checkPortabilitySubset()
             val validationLayers = getSupportedValidationLayers()
             val numValidationLayers = validationLayers.size
             var supportsValidation = validate
@@ -49,13 +49,22 @@ class Instance(val validate: Boolean) {
             val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
                 ?: throw RuntimeException("Failed to find the GLFW platform surface extensions")
             val requiredExtensions: PointerBuffer
+            var nRequiredExtensions = glfwExtensions.remaining()
+            if (supportsValidation) {
+                nRequiredExtensions += 1
+            }
+            val portability = portabilitySubset(stack)
+            if (portability !== null) {
+                nRequiredExtensions += 1
+            }
+            requiredExtensions = stack.mallocPointer(nRequiredExtensions)
+            requiredExtensions.put(glfwExtensions)
             if (supportsValidation) {
                 val vkDebugUtilsExtension = stack.UTF8(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-                requiredExtensions = stack.mallocPointer(glfwExtensions.remaining() + 1)
-                requiredExtensions.put(glfwExtensions).put(vkDebugUtilsExtension)
-            } else {
-                requiredExtensions = stack.mallocPointer(glfwExtensions.remaining() + 1)
-                requiredExtensions.put(glfwExtensions)
+                requiredExtensions.put(vkDebugUtilsExtension)
+            }
+            if (portability != null) {
+                requiredExtensions.put(portability)
             }
             requiredExtensions.flip()
             // Setup debug callback
@@ -67,12 +76,18 @@ class Instance(val validate: Boolean) {
                 debugUtils = null
             }
             // Create instance
+            val instanceCIFlags = if (portability != null) {
+                VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+            } else {
+                0
+            }
             val instanceInfo = VkInstanceCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pNext(extension)
                 .pApplicationInfo(appInfo)
                 .ppEnabledLayerNames(requiredLayers)
                 .ppEnabledExtensionNames(requiredExtensions)
+                .flags(instanceCIFlags)
             val pInstance = stack.mallocPointer(1)
             vkCheck(vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
             vkInstance = VkInstance(pInstance[0], instanceInfo)
@@ -90,94 +105,6 @@ class Instance(val validate: Boolean) {
         }
     }
 
-    private fun checkPortabilitySubset(): Boolean {
-        MemoryStack.stackPush().use { stack ->
-            val ip = stack.mallocInt(1)
-            vkCheck(
-                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, null),
-                "Error enumerating number of instance extensions"
-            )
-            val nExtensions = ip.get(0)
-            Logger.debug("Instance supports [{}] extensions", nExtensions)
-            val properties = VkExtensionProperties.calloc(nExtensions, stack)
-            vkCheck(
-                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, properties),
-                "Error enumerating instance extensions"
-            )
-            for (i in 0 until nExtensions) {
-                val prop = properties.get(i)
-                val name = prop.extensionNameString()
-                Logger.debug("Found extension [{}]", name)
-                if (name == "VK_KHR_portability_enumeration") {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    private fun createDebugCallback(): VkDebugUtilsMessengerCreateInfoEXT {
-        val result = VkDebugUtilsMessengerCreateInfoEXT
-            .calloc()
-            .`sType$Default`()
-            .messageSeverity(MESSAGE_SEVERITY_BITMASK)
-            .messageType(MESSAGE_TYPE_BITMASK)
-            .pfnUserCallback { messageSeverity, messageTypes, pCallbackData, pUserData ->
-                val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
-                if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
-                    Logger.info("VkDebugUtilsCallback, {}", callbackData.pMessageString())
-                } else if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
-                    Logger.warn("VkDebugUtilsCallback, {}", callbackData.pMessageString())
-                } else if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
-                    Logger.error("VkDebugUtilsCallback, {}", callbackData.pMessageString())
-                } else {
-                    Logger.debug("VkDebugUtilsCallback, {}", callbackData.pMessageString())
-                }
-                VK_FALSE
-            }
-        return result
-    }
-
-    private fun getSupportedValidationLayers(): List<String> {
-        MemoryStack.stackPush().use { stack ->
-            // Query number of layers
-            val numLayersArr = stack.callocInt(1)
-            vkEnumerateInstanceLayerProperties(numLayersArr, null)
-            val numLayers = numLayersArr.get(0)
-            Logger.debug("Instance supports [{}] layers", numLayers)
-            // Then query the properties
-            val propsBuf = VkLayerProperties.calloc(numLayers, stack)
-            val supportedLayers = ArrayList<String>()
-            vkEnumerateInstanceLayerProperties(numLayersArr, propsBuf)
-            for (i in 0 until numLayers) {
-                val props = propsBuf.get(i)
-                val layerName = props.layerNameString()
-                supportedLayers.add(layerName)
-                Logger.debug("Supported layer [{}]", layerName)
-            }
-            // Select layers
-            val layersToUse = ArrayList<String>()
-            // Main layer
-            if (supportedLayers.contains("VK_LAYER_KHRONOS_validation")) {
-                layersToUse.add("VK_LAYER_KHRONOS_validation")
-                return layersToUse
-            }
-            // Fallback 1
-            if (supportedLayers.contains("VK_LAYER_LUNARG_standard_validation")) {
-                layersToUse.add("VK_LAYER_LUNARG_standard_validation")
-                return layersToUse
-            }
-            // Fallback 2
-            val requestedLayers = ArrayList<String>()
-            requestedLayers.add("VK_LAYER_GOOGLE_threading")
-            requestedLayers.add("VK_LAYER_LUNARG_parameter_validation")
-            requestedLayers.add("VK_LAYER_LUNARG_object_tracker")
-            requestedLayers.add("VK_LAYER_LUNARG_core_validation")
-            requestedLayers.add("VK_LAYER_GOOGLE_unique_objects")
-            val overlap = requestedLayers.stream().filter(supportedLayers::contains).toList()
-            return overlap
-        }
-    }
 
     fun cleanup() {
         Logger.debug("Destroying Vulkan instance")
@@ -197,5 +124,92 @@ class Instance(val validate: Boolean) {
         const val MESSAGE_TYPE_BITMASK = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT or
                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT or
                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+
+        private fun getSupportedValidationLayers(): List<String> {
+            MemoryStack.stackPush().use { stack ->
+                // Query number of layers
+                val numLayersArr = stack.callocInt(1)
+                vkEnumerateInstanceLayerProperties(numLayersArr, null)
+                val numLayers = numLayersArr.get(0)
+                Logger.debug("Instance supports [{}] layers", numLayers)
+                // Then query the properties
+                val propsBuf = VkLayerProperties.calloc(numLayers, stack)
+                val supportedLayers = ArrayList<String>()
+                vkEnumerateInstanceLayerProperties(numLayersArr, propsBuf)
+                for (i in 0 until numLayers) {
+                    val props = propsBuf.get(i)
+                    val layerName = props.layerNameString()
+                    supportedLayers.add(layerName)
+                    Logger.debug("Supported layer [{}]", layerName)
+                }
+                // Select layers
+                val layersToUse = ArrayList<String>()
+                // Main layer
+                if (supportedLayers.contains("VK_LAYER_KHRONOS_validation")) {
+                    layersToUse.add("VK_LAYER_KHRONOS_validation")
+                    return layersToUse
+                }
+                // Fallback 1
+                if (supportedLayers.contains("VK_LAYER_LUNARG_standard_validation")) {
+                    layersToUse.add("VK_LAYER_LUNARG_standard_validation")
+                    return layersToUse
+                }
+                // Fallback 2
+                val requestedLayers = ArrayList<String>()
+                requestedLayers.add("VK_LAYER_GOOGLE_threading")
+                requestedLayers.add("VK_LAYER_LUNARG_parameter_validation")
+                requestedLayers.add("VK_LAYER_LUNARG_object_tracker")
+                requestedLayers.add("VK_LAYER_LUNARG_core_validation")
+                requestedLayers.add("VK_LAYER_GOOGLE_unique_objects")
+                val overlap = requestedLayers.stream().filter(supportedLayers::contains).toList()
+                return overlap
+            }
+        }
+
+        private fun createDebugCallback(): VkDebugUtilsMessengerCreateInfoEXT {
+            val result = VkDebugUtilsMessengerCreateInfoEXT
+                .calloc()
+                .`sType$Default`()
+                .messageSeverity(MESSAGE_SEVERITY_BITMASK)
+                .messageType(MESSAGE_TYPE_BITMASK)
+                .pfnUserCallback { messageSeverity, messageTypes, pCallbackData, pUserData ->
+                    val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
+                    if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
+                        Logger.info("VkDebugUtilsCallback, {}", callbackData.pMessageString())
+                    } else if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
+                        Logger.warn("VkDebugUtilsCallback, {}", callbackData.pMessageString())
+                    } else if ((messageSeverity and VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
+                        Logger.error("VkDebugUtilsCallback, {}", callbackData.pMessageString())
+                    } else {
+                        Logger.debug("VkDebugUtilsCallback, {}", callbackData.pMessageString())
+                    }
+                    VK_FALSE
+                }
+            return result
+        }
+
+        private fun portabilitySubset(stack: MemoryStack): ByteBuffer? {
+            val ip = stack.mallocInt(1)
+            vkCheck(
+                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, null),
+                "Error enumerating number of instance extensions"
+            )
+            val nExtensions = ip.get(0)
+            Logger.debug("Instance supports [{}] extensions", nExtensions)
+            val properties = VkExtensionProperties.calloc(nExtensions, stack)
+            vkCheck(
+                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, properties),
+                "Error enumerating instance extensions"
+            )
+            for (i in 0 until nExtensions) {
+                val prop = properties.get(i)
+                val name = prop.extensionNameString()
+                if (name == VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) {
+                    Logger.debug("Found extension [{}], portability required", name)
+                    return prop.extensionName()
+                }
+            }
+            return null
+        }
     }
 }
