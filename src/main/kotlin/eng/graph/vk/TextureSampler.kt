@@ -3,7 +3,7 @@ package eng.graph.vk
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.system.*
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 
 class TextureSampler(val device: Device, mipLevels: Int) {

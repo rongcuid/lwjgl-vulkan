@@ -1,7 +1,7 @@
 package eng.graph.vk
 
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 

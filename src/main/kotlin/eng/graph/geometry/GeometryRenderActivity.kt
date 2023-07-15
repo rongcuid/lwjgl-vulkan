@@ -12,7 +12,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.shaderc.Shaderc
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import java.nio.LongBuffer
 
 

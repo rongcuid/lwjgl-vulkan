@@ -3,7 +3,7 @@ package eng.graph.vk
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.lwjgl.vulkan.*
 import org.tinylog.kotlin.Logger
 import java.nio.ByteBuffer

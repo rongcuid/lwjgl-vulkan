@@ -4,7 +4,7 @@ import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 import java.nio.IntBuffer
 import java.nio.LongBuffer

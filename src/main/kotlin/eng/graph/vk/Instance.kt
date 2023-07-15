@@ -6,7 +6,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTDebugUtils.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 
@@ -25,7 +25,7 @@ class Instance(val validate: Boolean) {
                 .applicationVersion(1)
                 .pEngineName(appShortName)
                 .engineVersion(0)
-                .apiVersion(VK_API_VERSION_1_3)
+                .apiVersion(VK_API_VERSION_1_2)
             val validationLayers = getSupportedValidationLayers()
             val numValidationLayers = validationLayers.size
             var supportsValidation = validate

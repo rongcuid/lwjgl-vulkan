@@ -5,7 +5,7 @@ import eng.graph.vk.SwapChain
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 class LightingRenderPass(swapChain: SwapChain) {
     val device: Device

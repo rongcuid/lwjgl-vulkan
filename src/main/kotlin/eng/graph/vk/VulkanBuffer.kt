@@ -7,7 +7,7 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.vma.Vma.*
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 class VulkanBuffer(device: Device, size: Long, bufferUsage: Int, memoryUsage: Int, requiredFlags: Int) {
     val allocation: Long

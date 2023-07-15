@@ -13,7 +13,7 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.shaderc.Shaderc
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 
 class LightingRenderActivity(

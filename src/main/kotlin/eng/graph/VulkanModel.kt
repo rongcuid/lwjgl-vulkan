@@ -6,7 +6,7 @@ import eng.scene.ModelData.MeshData
 import org.joml.Vector4f
 import org.lwjgl.system.*
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 
 class VulkanModel(val modelId: String) {

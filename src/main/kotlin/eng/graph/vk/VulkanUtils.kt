@@ -3,7 +3,7 @@ package eng.graph.vk
 import org.joml.Matrix4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.lwjgl.vulkan.VkCommandBuffer
 
 class VulkanUtils {

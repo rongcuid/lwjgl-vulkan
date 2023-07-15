@@ -2,8 +2,8 @@ package eng.graph.vk
 
 import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK13.vkCreateShaderModule
-import org.lwjgl.vulkan.VK13.vkDestroyShaderModule
+import org.lwjgl.vulkan.VK12.vkCreateShaderModule
+import org.lwjgl.vulkan.VK12.vkDestroyShaderModule
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo
 import org.lwjgl.vulkan.VkSpecializationInfo
 import org.tinylog.kotlin.Logger

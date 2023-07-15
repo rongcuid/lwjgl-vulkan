@@ -4,7 +4,7 @@ import eng.graph.vk.VulkanUtils.Companion.vkCheck
 import org.tinylog.kotlin.Logger
 import org.lwjgl.system.*
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 class DescriptorPool(val device: Device, descriptorTypeCounts: List<DescriptorTypeCount>) {
     val vkDescriptorPool: Long

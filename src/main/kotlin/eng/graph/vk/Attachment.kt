@@ -2,7 +2,7 @@ package eng.graph.vk
 
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 
 class Attachment {

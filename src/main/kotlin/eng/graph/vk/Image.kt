@@ -6,7 +6,7 @@ import org.lwjgl.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 class Image(device: Device, imageData: ImageData) {
     val vkImage: Long
     val vkMemory: Long

@@ -4,7 +4,7 @@ import org.lwjgl.*
 import org.lwjgl.system.*
 import org.lwjgl.util.shaderc.Shaderc
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 import org.tinylog.kotlin.Logger
 import java.io.File
 import java.io.IOException

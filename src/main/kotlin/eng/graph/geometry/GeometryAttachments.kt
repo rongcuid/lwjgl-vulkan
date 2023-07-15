@@ -2,7 +2,7 @@ package eng.graph.geometry
 
 import eng.graph.vk.Attachment
 import eng.graph.vk.Device
-import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VK12.*
 
 class GeometryAttachments(device: Device, width: Int, height: Int) {
     val attachments: List<Attachment>
