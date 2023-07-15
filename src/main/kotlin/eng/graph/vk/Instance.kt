@@ -28,59 +28,19 @@ class Instance(val validate: Boolean) {
                 .pEngineName(appShortName)
                 .engineVersion(0)
                 .apiVersion(VK_API_VERSION_1_2)
-            val validationLayers = getSupportedValidationLayers()
-            val numValidationLayers = validationLayers.size
-            var supportsValidation = validate
-            if (validate && numValidationLayers == 0) {
-                supportsValidation = false
-                Logger.warn("Request validation but no supported validation layers found. Falling back to no validation")
-                Logger.debug("Validation: {}", supportsValidation)
-            }
+            val (validationLayers, validationExtensions, du) = getValidationStructures(validate)
+            debugUtils = du
+            val portability = checkPortabilitySubset()
             // Set required layers
-            var requiredLayers: PointerBuffer? = null
-            if (supportsValidation) {
-                requiredLayers = stack.mallocPointer(numValidationLayers)
-                for (i in 0 until numValidationLayers) {
-                    Logger.debug("Using a validation layer [{}]", validationLayers[i])
-                    requiredLayers!!.put(i, stack.ASCII(validationLayers[i]))
-                }
-            }
-            // GLFW extensions
-            val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
-                ?: throw RuntimeException("Failed to find the GLFW platform surface extensions")
-            val requiredExtensions: PointerBuffer
-            var nRequiredExtensions = glfwExtensions.remaining()
-            if (supportsValidation) {
-                nRequiredExtensions += 1
-            }
-            val portability = portabilitySubset(stack)
-            if (portability !== null) {
-                nRequiredExtensions += 1
-            }
-            requiredExtensions = stack.mallocPointer(nRequiredExtensions)
-            requiredExtensions.put(glfwExtensions)
-            if (supportsValidation) {
-                val vkDebugUtilsExtension = stack.UTF8(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-                requiredExtensions.put(vkDebugUtilsExtension)
-            }
-            if (portability != null) {
-                requiredExtensions.put(portability)
-            }
-            requiredExtensions.flip()
+            val requiredLayers = getRequiredLayers(stack, validationLayers)
+            val requiredExtensions = getRequiredExtensions(stack, validationExtensions, portability)
             // Setup debug callback
             var extension = MemoryUtil.NULL
-            if (supportsValidation) {
-                debugUtils = createDebugCallback()
+            if (debugUtils != null) {
                 extension = debugUtils.address()
-            } else {
-                debugUtils = null
             }
             // Create instance
-            val instanceCIFlags = if (portability != null) {
-                VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
-            } else {
-                0
-            }
+            val instanceCIFlags = getCIFlags(portability)
             val instanceInfo = VkInstanceCreateInfo.calloc(stack)
                 .`sType$Default`()
                 .pNext(extension)
@@ -92,10 +52,10 @@ class Instance(val validate: Boolean) {
             vkCheck(vkCreateInstance(instanceInfo, null, pInstance), "Error creating instance")
             vkInstance = VkInstance(pInstance[0], instanceInfo)
             // Instantiate debug extension
-            vkDebugHandle = if (supportsValidation) {
+            vkDebugHandle = if (debugUtils != null) {
                 val longBuff = stack.mallocLong(1)
                 vkCheck(
-                    vkCreateDebugUtilsMessengerEXT(vkInstance, debugUtils!!, null, longBuff),
+                    vkCreateDebugUtilsMessengerEXT(vkInstance, debugUtils, null, longBuff),
                     "Error creating debug utils"
                 )
                 longBuff.get(0)
@@ -188,28 +148,89 @@ class Instance(val validate: Boolean) {
             return result
         }
 
-        private fun portabilitySubset(stack: MemoryStack): ByteBuffer? {
-            val ip = stack.mallocInt(1)
-            vkCheck(
-                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, null),
-                "Error enumerating number of instance extensions"
-            )
-            val nExtensions = ip.get(0)
-            Logger.debug("Instance supports [{}] extensions", nExtensions)
-            val properties = VkExtensionProperties.calloc(nExtensions, stack)
-            vkCheck(
-                vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, properties),
-                "Error enumerating instance extensions"
-            )
-            for (i in 0 until nExtensions) {
-                val prop = properties.get(i)
-                val name = prop.extensionNameString()
-                if (name == VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) {
-                    Logger.debug("Found extension [{}], portability required", name)
-                    return prop.extensionName()
-                }
+        private fun getValidationStructures(validate: Boolean): Triple<List<String>, List<String>, VkDebugUtilsMessengerCreateInfoEXT?> {
+            if (!validate) {
+                return Triple(listOf(), listOf(), null)
             }
-            return null
+            val validationLayers = getSupportedValidationLayers()
+            val numValidationLayers = validationLayers.size
+            var supportsValidation = validate
+            if (numValidationLayers == 0) {
+                supportsValidation = false
+                Logger.warn("Request validation but no supported validation layers found. Falling back to no validation")
+            }
+            Logger.debug("Validation: {}", supportsValidation)
+            val debugUtils = createDebugCallback()
+            return Triple(validationLayers, listOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME), debugUtils)
+        }
+
+        private fun getRequiredLayers(stack: MemoryStack, validationLayers: List<String>): PointerBuffer {
+            val numRequiredLayers = validationLayers.size;
+            val requiredLayers = stack.mallocPointer(numRequiredLayers)
+            validationLayers.forEachIndexed { i, l ->
+                Logger.debug("Using a validation layer [{}]", validationLayers[i])
+                requiredLayers.put(i, stack.ASCII(l))
+            }
+            return requiredLayers
+        }
+
+        private fun checkPortabilitySubset(): Boolean {
+            MemoryStack.stackPush().use { stack ->
+                val ip = stack.mallocInt(1)
+                vkCheck(
+                    vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, null),
+                    "Error enumerating number of instance extensions"
+                )
+                val nExtensions = ip.get(0)
+                val properties = VkExtensionProperties.calloc(nExtensions, stack)
+                vkCheck(
+                    vkEnumerateInstanceExtensionProperties(null as ByteBuffer?, ip, properties),
+                    "Error enumerating instance extensions"
+                )
+                for (i in 0 until nExtensions) {
+                    val prop = properties.get(i)
+                    val name = prop.extensionNameString()
+                    if (name == VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) {
+                        Logger.debug("Found extension [{}], portability subset enumeration required", name)
+                        return true
+                    }
+                }
+                Logger.debug("Portability subset enumeration not required")
+                return false
+            }
+        }
+
+        private fun getRequiredExtensions(
+            stack: MemoryStack,
+            validationExtensions: List<String>,
+            portability: Boolean
+        ): PointerBuffer {
+            val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
+                ?: throw RuntimeException("Failed to find the GLFW platform surface extensions")
+            val numPortabilityExts = if (portability) {
+                1
+            } else {
+                0
+            }
+            val numRequiredExtensions = glfwExtensions.remaining() + validationExtensions.size + numPortabilityExts
+            val requiredExtensions = stack.mallocPointer(numRequiredExtensions)
+            requiredExtensions.put(glfwExtensions)
+            validationExtensions.forEach {
+                requiredExtensions.put(stack.UTF8(it))
+            }
+            if (portability) {
+                requiredExtensions.put(stack.UTF8(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
+            }
+            requiredExtensions.flip()
+            return requiredExtensions
+        }
+
+        private fun getCIFlags(portability: Boolean): Int {
+            return if (portability) {
+                VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+            } else {
+                0
+            }
         }
     }
 }
